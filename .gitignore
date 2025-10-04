@@ -5,6 +5,10 @@
 *.swp
 *~
 
+# imagenes jpeg
+*.jpg
+*.jpeg
+
 # Dependencias
 node_modules/
 */node_modules/*
@@ -61,9 +65,19 @@ env/
 
 # Datos y archivos grandes
 *.csv
-*.json
 *.xlsx
 !fixtures/*.json
 !sample-data/*.csv
 *.hdf5
 *.h5
+
+# Krita files (diseño)
+*.kra
+*.kra~
+
+# Assets originales grandes (mantener solo los optimizados)
+# Sprites/
+
+# Documentación temporal (opcional - descomentar si no quieres versionar)
+# STARFIELD_IMPLEMENTATION.md
+# verify-starfield.sh

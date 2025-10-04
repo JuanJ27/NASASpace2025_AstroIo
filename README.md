@@ -29,7 +29,12 @@ A modern, space-themed Agar.io clone built with Node.js, Express, Socket.IO, and
 ### 🎨 Aesthetic Enhancements
 - **Orbitron Font**: Modern, space-themed typography from Google Fonts
 - **Glow Effects**: Players and orbs have beautiful glow effects using PixiJS
-- **Animated Background**: Dynamic starry space background
+- **Dynamic Starry Background**: ✨ **NEW** - 300 particle-based stars with parallax scrolling and twinkling animation
+  - Uses `/assets/star1.webp` and `/assets/star2.webp` sprites
+  - ParticleContainer for optimized rendering (1000+ sprites capability)
+  - Parallax effect (stars move at 20% camera speed for depth)
+  - Smooth twinkling animation using sine waves
+  - Random scale (0.5x-1x) and opacity (0.5-1.0) for variety
 - **Smooth Animations**: Interpolated movement for silky smooth gameplay
 - **Responsive UI**: Clean, modern interface with semi-transparent panels
 
@@ -242,11 +247,47 @@ const GAME_CONFIG = {
 
 **Current Status**: All known issues resolved! 🎉
 
+### Extending the Starry Background
+The dynamic starry background can be easily extended:
+
+**Add More Star Types:**
+```javascript
+// In startGame() function, add more star textures
+PIXI.Loader.shared
+  .add('star1', '/assets/star1.webp')
+  .add('star2', '/assets/star2.webp')
+  .add('star3', '/assets/star3.webp') // Add new star sprite
+  .load((loader, resources) => { /* ... */ });
+
+// In createStarryBackground(), use new textures
+const textures = [star1Texture, star2Texture, star3Texture];
+const texture = textures[i % textures.length];
+```
+
+**Adjust Star Density:**
+```javascript
+// In createStarryBackground()
+const numStars = 500; // Increase from 300 for denser field
+```
+
+**Modify Parallax Depth:**
+```javascript
+// In updateStarParallax()
+const parallaxFactor = 0.3; // Increase from 0.2 for faster movement
+```
+
+**Change Twinkling Speed:**
+```javascript
+// In createStarryBackground()
+star.twinkleSpeed = Math.random() * 0.003 + 0.002; // Faster twinkling
+```
+
 ## 🔮 Future Enhancements
 
 Potential features for future development:
 
 - [ ] **Custom Sprites**: Replace circles with ship/asteroid sprites
+- [x] **Dynamic Star Field**: ✅ **IMPLEMENTED** - Parallax starry background with twinkling
 - [ ] **Particle Effects**: Add trails, explosions, and power-up effects
 - [ ] **Shaders**: Custom WebGL shaders for advanced visuals
 - [ ] **Power-Ups**: Speed boosts, shields, temporary invincibility

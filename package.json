@@ -1,0 +1,23 @@
+{
+  "name": "astroio",
+  "version": "1.0.0",
+  "description": "Minimal Agar.io clone with Node.js, Socket.IO, and PixiJS",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node server.js"
+  },
+  "keywords": [
+    "game",
+    "agar.io",
+    "socket.io",
+    "pixijs"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
+  }
+}
