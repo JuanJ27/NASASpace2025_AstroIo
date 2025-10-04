@@ -1,0 +1,31 @@
+=== ASTROIO PROJECT INVENTORY ===
+
+Generated: jue 02 oct 2025 07:47:13 -05
+
+=== CORE FILES ===
+-rw-r--r-- 1 juan juan  25K oct  2 07:24 public/index.html
+-rw-r--r-- 1 juan juan  12K oct  2 07:32 server.js
+-rw-r--r-- 1 juan juan 6,7K oct  2 07:27 test-client.js
+-rw-r--r-- 1 juan juan  13K oct  2 07:29 test-combat.js
+
+=== DOCUMENTATION ===
+-rw-r--r-- 1 juan juan 6,4K oct  2 07:46 QUICK_START.txt
+-rw-r--r-- 1 juan juan  10K oct  2 07:38 README.md
+-rw-r--r-- 1 juan juan 9,9K oct  2 07:46 SESSION_SUMMARY.txt
+
+=== BACKUPS ===
+-rw-r--r-- 1 juan juan 8,2K oct  2 07:37 README.md.backup
+-rw-r--r-- 1 juan juan 7,5K oct  2 07:24 server.js.backup
+-rw-r--r-- 1 juan juan 3,7K oct  2 07:26 test-client.js.backup
+-rw-r--r-- 1 juan juan 7,1K oct  2 07:26 test-combat.js.backup
+
+=== LOG FILES ===
+-rw-r--r-- 1 juan juan 2,2K oct  2 00:34 server.log
+-rw-r--r-- 1 juan juan  43K oct  2 07:38 test.log
+
+  415 server.js
+  929 public/index.html
+  230 test-client.js
+  405 test-combat.js
+  298 README.md
+ 2277 total

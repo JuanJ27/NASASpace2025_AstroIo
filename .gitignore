@@ -1,0 +1,69 @@
+# Archivos de respaldo
+*.backup
+*.backup2
+*.bak
+*.swp
+*~
+
+# Dependencias
+node_modules/
+*/node_modules/*
+package-lock.json
+yarn.lock
+
+# Entorno y configuración
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+config.local.js
+
+# Archivos compilados
+/build/
+/dist/
+/out/
+/coverage/
+*.min.js
+*.min.css
+
+# Logs y datos temporales
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/logs/
+/temp/
+.tmp/
+.cache/
+
+# IDEs y editores
+.idea/
+.vscode/
+*.sublime-*
+.project
+.classpath
+*.iml
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python (si tu proyecto lo usa)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.env/
+
+# Datos y archivos grandes
+*.csv
+*.json
+*.xlsx
+!fixtures/*.json
+!sample-data/*.csv
+*.hdf5
+*.h5

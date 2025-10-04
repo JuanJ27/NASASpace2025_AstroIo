@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstroIo - Space Battle Arena</title>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Orbitron', 'Arial', sans-serif;
+      background: #0a0a0f;
+    }
+
+    /* Starry space background */
+    #background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(88, 28, 135, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(30, 64, 175, 0.1) 0%, transparent 50%),
+        #0a0a0f;
+      z-index: -2;
+    }
+
+    #stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(1px 1px at 20% 30%, white, transparent),
+        radial-gradient(1px 1px at 60% 70%, white, transparent),
+        radial-gradient(1px 1px at 50% 50%, white, transparent),
+        radial-gradient(1px 1px at 80% 10%, white, transparent),
+        radial-gradient(1px 1px at 90% 60%, white, transparent),
+        radial-gradient(2px 2px at 33% 80%, #fff, transparent),
+        radial-gradient(2px 2px at 75% 40%, #fff, transparent);
+      background-size: 250% 250%, 200% 200%, 300% 300%, 200% 200%, 250% 250%, 200% 200%, 300% 300%;
+      background-position: 0 0, 20px 20px, 40px 40px, 60px 60px, 80px 80px, 100px 100px, 120px 120px;
+      animation: starsAnimation 120s linear infinite;
+      z-index: -1;
+      opacity: 0.5;
+    }
+
+    @keyframes starsAnimation {
+      from { transform: translateY(0); }
+      to { transform: translateY(-100px); }
+    }
+
+    #gameCanvas {
+      display: block;
+      cursor: none;
+      image-rendering: crisp-edges;
+    }
+
+    /* Name Selection Modal */
+    #nameModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    #nameModal.hidden {
+      display: none;
+    }
+
+    #nameForm {
+      background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 40, 0.95));
+      padding: 40px;
+      border-radius: 20px;
+      border: 2px solid rgba(138, 43, 226, 0.5);
+      box-shadow: 0 0 40px rgba(138, 43, 226, 0.3), inset 0 0 60px rgba(138, 43, 226, 0.1);
+      text-align: center;
+      max-width: 450px;
+      width: 90%;
+    }
+
+    #nameForm h1 {
+      color: #fff;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(138, 43, 226, 0.8);
+      letter-spacing: 3px;
+      font-weight: 900;
+    }
+
+    #nameForm .subtitle {
+      color: #aaa;
+      font-size: 0.9em;
+      margin-bottom: 30px;
+      letter-spacing: 1px;
+    }
+
+    #nameInput {
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 1.1em;
+      font-family: 'Orbitron', Arial, sans-serif;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(138, 43, 226, 0.5);
+      border-radius: 10px;
+      color: #fff;
+      outline: none;
+      transition: all 0.3s ease;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    #nameInput:focus {
+      border-color: rgba(138, 43, 226, 1);
+      box-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    #nameInput::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    #startButton {
+      width: 100%;
+      padding: 15px 20px;
+      margin-top: 20px;
+      font-size: 1.2em;
+      font-family: 'Orbitron', Arial, sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #8a2be2, #6a1bb2);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+      box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+    }
+
+    #startButton:hover {
+      background: linear-gradient(135deg, #9a3bf2, #7a2bc2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+    }
+
+    #startButton:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 10px rgba(138, 43, 226, 0.4);
+    }
+
+    #errorMessage {
+      color: #ff6b6b;
+      margin-top: 15px;
+      font-size: 0.9em;
+      min-height: 20px;
+      text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    }
+
+    /* HUD Panel */
+    #hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 30, 0.9));
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid rgba(138, 43, 226, 0.4);
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      color: #fff;
+      font-size: 14px;
+      min-width: 220px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #hud.hidden {
+      display: none;
+    }
+
+    #hud h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+      color: #8a2be2;
+      text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+      letter-spacing: 2px;
+      border-bottom: 2px solid rgba(138, 43, 226, 0.3);
+      padding-bottom: 10px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(138, 43, 226, 0.2);
+    }
+
+    .stat-label {
+      color: #aaa;
+      letter-spacing: 1px;
+    }
+
+    .stat-value {
+      color: #fff;
+      font-weight: 700;
+      text-shadow: 0 0 5px rgba(138, 43, 226, 0.5);
+    }
+
+    #playerName {
+      color: #8a2be2;
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
+    /* Instructions */
+    #instructions {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 30, 0.9));
+      padding: 15px 20px;
+      border-radius: 15px;
+      border: 2px solid rgba(138, 43, 226, 0.4);
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      color: #fff;
+      font-size: 12px;
+      max-width: 300px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #instructions.hidden {
+      display: none;
+    }
+
+    #instructions strong {
+      color: #8a2be2;
+      text-shadow: 0 0 5px rgba(138, 43, 226, 0.5);
+    }
+
+    /* Leaderboard */
+    #leaderboard {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 30, 0.9));
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid rgba(138, 43, 226, 0.4);
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      color: #fff;
+      font-size: 13px;
+      min-width: 200px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #leaderboard.hidden {
+      display: none;
+    }
+
+    #leaderboard h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+      color: #8a2be2;
+      text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+      letter-spacing: 2px;
+      text-align: center;
+      border-bottom: 2px solid rgba(138, 43, 226, 0.3);
+      padding-bottom: 10px;
+    }
+
+    .leaderboard-entry {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      padding: 6px 10px;
+      background: rgba(138, 43, 226, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(138, 43, 226, 0.2);
+    }
+
+    .leaderboard-entry.self {
+      background: rgba(138, 43, 226, 0.3);
+      border-color: rgba(138, 43, 226, 0.6);
+    }
+
+    .leaderboard-rank {
+      color: #8a2be2;
+      font-weight: 700;
+      margin-right: 10px;
+    }
+
+    .leaderboard-name {
+      flex: 1;
+      color: #fff;
+    }
+
+    .leaderboard-size {
+      color: #8a2be2;
+      font-weight: 700;
+    }
+
+    /* Game Over Screen */
+    #gameOverScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      backdrop-filter: blur(10px);
+    }
+
+    #gameOverScreen.hidden {
+      display: none;
+    }
+
+    #gameOverContent {
+      text-align: center;
+      padding: 40px;
+      background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 40, 0.95));
+      border-radius: 20px;
+      border: 2px solid rgba(255, 107, 107, 0.5);
+      box-shadow: 0 0 40px rgba(255, 107, 107, 0.3);
+      max-width: 500px;
+    }
+
+    #gameOverContent h1 {
+      color: #ff6b6b;
+      font-size: 3em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+    }
+
+    #gameOverContent p {
+      color: #fff;
+      font-size: 1.2em;
+      margin: 15px 0;
+    }
+
+    #respawnButton {
+      padding: 15px 40px;
+      margin-top: 30px;
+      font-size: 1.2em;
+      font-family: 'Orbitron', Arial, sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #8a2be2, #6a1bb2);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+      box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+    }
+
+    #respawnButton:hover {
+      background: linear-gradient(135deg, #9a3bf2, #7a2bc2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+    }
+  </style>
+</head>
+<body>
+  <!-- Background -->
+  <div id="background"></div>
+  <div id="stars"></div>
+
+  <!-- Name Selection Modal -->
+  <div id="nameModal">
+    <div id="nameForm">
+      <h1>ASTRO.IO</h1>
+      <p class="subtitle">Enter the Space Battle Arena</p>
+      <input 
+        type="text" 
+        id="nameInput" 
+        placeholder="Enter your name" 
+        maxlength="20"
+        autocomplete="off"
+      />
+      <div id="errorMessage"></div>
+      <button id="startButton">LAUNCH</button>
+    </div>
+  </div>
+
+  <!-- HUD Panel -->
+  <div id="hud" class="hidden">
+    <h3>STATUS</h3>
+    <div class="stat-row">
+      <span class="stat-label">Name:</span>
+      <span class="stat-value" id="playerName">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Size:</span>
+      <span class="stat-value" id="size">20</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Players:</span>
+      <span class="stat-value" id="players">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Position:</span>
+      <span class="stat-value" id="position">0, 0</span>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboard" class="hidden">
+    <h3>LEADERBOARD</h3>
+    <div id="leaderboardList"></div>
+  </div>
+
+  <!-- Instructions -->
+  <div id="instructions" class="hidden">
+    <strong>Controls:</strong> Move your mouse to control<br>
+    <strong>Goal:</strong> Eat orbs (red) and smaller players!<br>
+    <strong>Tip:</strong> You must be 1.1x larger to eat others
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" class="hidden">
+    <div id="gameOverContent">
+      <h1>ELIMINATED</h1>
+      <p id="gameOverMessage">You were eaten!</p>
+      <p id="finalStats"></p>
+      <button id="respawnButton">RESPAWN</button>
+    </div>
+  </div>
+
+  <!-- PixiJS CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.2/browser/pixi.min.js"></script>
+  
+  <!-- Socket.IO CDN -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    /**
+     * AstroIo - Enhanced Frontend Client
+     * 
+     * Features:
+     * - Full-screen responsive canvas
+     * - Name selection and display
+     * - Enhanced UI with space theme
+     * - Leaderboard
+     * - Error handling
+     * - Dynamic window resizing
+     */
+
+    // Logging utility
+    function log(message, type = 'info') {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
+    }
+
+    // Game State
+    let myPlayerId = null;
+    let myPlayerName = '';
+    let worldWidth = 2000;
+    let worldHeight = 2000;
+    let camera = { x: 0, y: 0 };
+    let isGameActive = false;
+    let finalSize = 0;
+
+    // Client-side game state for delta updates
+    let clientGameState = {
+      players: {},
+      orbs: new Map() // Use Map for efficient orb lookup by ID
+    };
+
+    // PixiJS Application (will be initialized after name selection)
+    let app = null;
+    let worldContainer = null;
+    let playerGraphics = {};
+    let playerNameTexts = {};
+    let orbGraphics = {};
+
+    // Socket.IO connection
+    let socket = null;
+
+    // DOM Elements
+    const nameModal = document.getElementById('nameModal');
+    const nameInput = document.getElementById('nameInput');
+    const startButton = document.getElementById('startButton');
+    const errorMessage = document.getElementById('errorMessage');
+    const hud = document.getElementById('hud');
+    const instructions = document.getElementById('instructions');
+    const leaderboard = document.getElementById('leaderboard');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const respawnButton = document.getElementById('respawnButton');
+
+    /**
+     * Initialize PixiJS with full-screen canvas
+     */
+    function initializePixi() {
+      try {
+        app = new PIXI.Application({
+          width: window.innerWidth,
+          height: window.innerHeight,
+          backgroundColor: 0x0a0a0f,
+          antialias: true,
+          resolution: window.devicePixelRatio || 1,
+          autoDensity: true
+        });
+        document.body.appendChild(app.view);
+        app.view.id = 'gameCanvas';
+
+        worldContainer = new PIXI.Container();
+        app.stage.addChild(worldContainer);
+
+        log('PixiJS initialized with full-screen canvas');
+      } catch (error) {
+        log(`Error initializing PixiJS: ${error.message}`, 'error');
+        showError('Failed to initialize game graphics');
+      }
+    }
+
+    /**
+     * Handle window resize
+     */
+    // Debounced resize handler to reduce glitches
+    let resizeTimeout;
+    function handleResize() {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (app) {
+          app.renderer.resize(window.innerWidth, window.innerHeight);
+          log(`Canvas resized to ${window.innerWidth}x${window.innerHeight}`);
+        }
+      }, 100);
+    }
+
+    window.addEventListener('resize', handleResize);
+
+    /**
+     * Validate player name
+     */
+    function validateName(name) {
+      if (!name || name.trim().length === 0) {
+        return { valid: false, error: 'Name cannot be empty' };
+      }
+      if (name.length > 20) {
+        return { valid: false, error: 'Name too long (max 20 characters)' };
+      }
+      if (!/^[a-zA-Z0-9_\s]+$/.test(name)) {
+        return { valid: false, error: 'Name can only contain letters, numbers, and spaces' };
+      }
+      return { valid: true };
+    }
+
+    /**
+     * Show error message
+     */
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      setTimeout(() => {
+        errorMessage.style.display = 'none';
+      }, 3000);
+    }
+
+    /**
+     * Start game with player name
+     */
+    function startGame() {
+      const name = nameInput.value.trim();
+      const validation = validateName(name);
+
+      if (!validation.valid) {
+        showError(validation.error);
+        return;
+      }
+
+      myPlayerName = name;
+      log(`Starting game with name: ${myPlayerName}`);
+
+      // Hide name modal
+      nameModal.classList.add('hidden');
+
+      // Show UI elements
+      hud.classList.remove('hidden');
+      instructions.classList.remove('hidden');
+      leaderboard.classList.remove('hidden');
+      document.getElementById('playerName').textContent = myPlayerName;
+
+      // Initialize PixiJS
+      initializePixi();
+
+      // Connect to server
+      connectToServer();
+    }
+
+    /**
+     * Connect to Socket.IO server
+     */
+    function connectToServer() {
+      try {
+        socket = io();
+
+        socket.on('connect', () => {
+          log('Connected to server');
+          socket.emit('setName', myPlayerName);
+        });
+
+        socket.on('init', (data) => {
+          try {
+            myPlayerId = data.playerId;
+            worldWidth = data.worldWidth;
+            worldHeight = data.worldHeight;
+            isGameActive = true;
+            log(`Initialized as player ${myPlayerId}`);
+          } catch (error) {
+            log(`Error handling init: ${error.message}`, 'error');
+          }
+        });
+
+        socket.on('gameFull', (data) => {
+          try {
+            log('Game is full', 'warn');
+            showError(data.message);
+            setTimeout(() => {
+              location.reload();
+            }, 3000);
+          } catch (error) {
+            log(`Error handling gameFull: ${error.message}`, 'error');
+          }
+        });
+
+        socket.on('gameOver', (data) => {
+          try {
+            log(`Game over: ${data.message}`);
+            isGameActive = false;
+            showGameOver(data);
+          } catch (error) {
+            log(`Error handling gameOver: ${error.message}`, 'error');
+          }
+        });
+
+        socket.on('gameState', (state) => {
+          try {
+            if (isGameActive) {
+              updateGameState(state);
+            }
+          } catch (error) {
+            log(`Error handling gameState: ${error.message}`, 'error');
+          }
+        });
+
+        socket.on('disconnect', () => {
+          log('Disconnected from server', 'warn');
+        });
+
+      } catch (error) {
+        log(`Error connecting to server: ${error.message}`, 'error');
+        showError('Failed to connect to server');
+      }
+    }
+
+    /**
+     * Update game state from server (handles delta updates)
+     */
+    function updateGameState(delta) {
+      try {
+        // Merge delta updates into client state
+        
+        // Update or add changed players
+        if (delta.players) {
+          Object.entries(delta.players).forEach(([id, player]) => {
+            clientGameState.players[id] = player;
+          });
+        }
+
+        // Remove deleted players
+        if (delta.removedPlayers) {
+          delta.removedPlayers.forEach(id => {
+            delete clientGameState.players[id];
+            // Clean up graphics
+            if (playerGraphics[id]) {
+              playerGraphics[id].destroy();
+              delete playerGraphics[id];
+            }
+            if (playerNameTexts[id]) {
+              playerNameTexts[id].destroy();
+              delete playerNameTexts[id];
+            }
+          });
+        }
+
+        // Add new orbs
+        if (delta.orbs) {
+          delta.orbs.forEach(orb => {
+            clientGameState.orbs.set(orb.id, orb);
+          });
+        }
+
+        // Remove eaten orbs
+        if (delta.removedOrbs) {
+          delta.removedOrbs.forEach(orbId => {
+            clientGameState.orbs.delete(orbId);
+            // Clean up graphics
+            if (orbGraphics[orbId]) {
+              orbGraphics[orbId].destroy();
+              delete orbGraphics[orbId];
+            }
+          });
+        }
+
+        // Render all players
+        Object.values(clientGameState.players).forEach(player => {
+          renderPlayer(player);
+        });
+
+        // Render all orbs
+        clientGameState.orbs.forEach(orb => {
+          renderOrb(orb);
+        });
+
+        // Update camera
+        if (myPlayerId && clientGameState.players[myPlayerId]) {
+          const myPlayer = clientGameState.players[myPlayerId];
+          updateCamera(myPlayer);
+          updateHUD(myPlayer, Object.keys(clientGameState.players).length);
+        }
+
+        // Update leaderboard
+        updateLeaderboard(clientGameState.players);
+      } catch (error) {
+        log(`Error updating game state: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Render player with name
+     */
+    function renderPlayer(player) {
+      try {
+        let graphics = playerGraphics[player.id];
+        let nameText = playerNameTexts[player.id];
+
+        if (!graphics) {
+          graphics = new PIXI.Graphics();
+          worldContainer.addChild(graphics);
+          playerGraphics[player.id] = graphics;
+        }
+
+        if (!nameText) {
+          nameText = new PIXI.Text('', {
+            fontFamily: 'Orbitron, Arial',
+            fontSize: 14,
+            fill: 0xffffff,
+            stroke: 0x000000,
+            strokeThickness: 3,
+            align: 'center'
+          });
+          nameText.anchor.set(0.5);
+          worldContainer.addChild(nameText);
+          playerNameTexts[player.id] = nameText;
+        }
+
+        // Clear and redraw
+        graphics.clear();
+
+        const isMe = player.id === myPlayerId;
+        const color = isMe ? 0x00ff88 : 0x0088ff;
+        const glowColor = isMe ? 0x00ffaa : 0x00aaff;
+
+        // Draw glow
+        graphics.beginFill(glowColor, 0.2);
+        graphics.drawCircle(0, 0, player.size + 8);
+        graphics.endFill();
+
+        // Draw player circle
+        graphics.beginFill(color, 0.9);
+        graphics.lineStyle(3, 0xffffff, 0.6);
+        graphics.drawCircle(0, 0, player.size);
+        graphics.endFill();
+
+        // Position graphics
+        graphics.x = player.x;
+        graphics.y = player.y;
+
+        // Update name text
+        nameText.text = player.name || 'Player';
+        nameText.x = player.x;
+        nameText.y = player.y - player.size - 20;
+      } catch (error) {
+        log(`Error rendering player ${player.id}: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Render orb with glow effect
+     */
+    function renderOrb(orb) {
+      try {
+        let graphics = orbGraphics[orb.id];
+
+        if (!graphics) {
+          graphics = new PIXI.Graphics();
+          worldContainer.addChild(graphics);
+          orbGraphics[orb.id] = graphics;
+        }
+
+        graphics.clear();
+
+        // Draw glow
+        graphics.beginFill(0xff4444, 0.3);
+        graphics.drawCircle(0, 0, orb.size + 4);
+        graphics.endFill();
+
+        // Draw orb
+        graphics.beginFill(0xff2222, 1);
+        graphics.lineStyle(2, 0xff6666, 0.8);
+        graphics.drawCircle(0, 0, orb.size);
+        graphics.endFill();
+
+        graphics.x = orb.x;
+        graphics.y = orb.y;
+      } catch (error) {
+        log(`Error rendering orb ${orb.id}: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Update camera to follow player
+     */
+    function updateCamera(player) {
+      try {
+        camera.x = player.x - app.screen.width / 2;
+        camera.y = player.y - app.screen.height / 2;
+
+        camera.x = Math.max(0, Math.min(worldWidth - app.screen.width, camera.x));
+        camera.y = Math.max(0, Math.min(worldHeight - app.screen.height, camera.y));
+
+        worldContainer.x = -camera.x;
+        worldContainer.y = -camera.y;
+      } catch (error) {
+        log(`Error updating camera: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Update HUD
+     */
+    function updateHUD(player, playerCount) {
+      try {
+        document.getElementById('size').textContent = Math.floor(player.size);
+        document.getElementById('players').textContent = playerCount;
+        document.getElementById('position').textContent = 
+          `${Math.floor(player.x)}, ${Math.floor(player.y)}`;
+        finalSize = Math.floor(player.size);
+      } catch (error) {
+        log(`Error updating HUD: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Update leaderboard
+     */
+    function updateLeaderboard(players) {
+      try {
+        const sorted = Object.values(players).sort((a, b) => b.size - a.size).slice(0, 5);
+        const leaderboardList = document.getElementById('leaderboardList');
+        leaderboardList.innerHTML = '';
+
+        sorted.forEach((player, index) => {
+          const entry = document.createElement('div');
+          entry.className = 'leaderboard-entry' + (player.id === myPlayerId ? ' self' : '');
+          entry.innerHTML = `
+            <span class="leaderboard-rank">#${index + 1}</span>
+            <span class="leaderboard-name">${player.name || 'Player'}</span>
+            <span class="leaderboard-size">${Math.floor(player.size)}</span>
+          `;
+          leaderboardList.appendChild(entry);
+        });
+      } catch (error) {
+        log(`Error updating leaderboard: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Clean up removed objects
+     */
+    function cleanupRemovedObjects(currentPlayers, currentOrbs) {
+      try {
+        Object.keys(playerGraphics).forEach(playerId => {
+          if (!currentPlayers[playerId]) {
+            worldContainer.removeChild(playerGraphics[playerId]);
+            delete playerGraphics[playerId];
+            if (playerNameTexts[playerId]) {
+              worldContainer.removeChild(playerNameTexts[playerId]);
+              delete playerNameTexts[playerId];
+            }
+          }
+        });
+
+        const currentOrbIds = new Set(currentOrbs.map(orb => orb.id));
+        Object.keys(orbGraphics).forEach(orbId => {
+          if (!currentOrbIds.has(orbId)) {
+            worldContainer.removeChild(orbGraphics[orbId]);
+            delete orbGraphics[orbId];
+          }
+        });
+      } catch (error) {
+        log(`Error cleaning up objects: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Show game over screen
+     */
+    function showGameOver(data) {
+      try {
+        document.getElementById('gameOverMessage').textContent = data.message;
+        document.getElementById('finalStats').textContent = 
+          `Final Size: ${finalSize} | Name: ${myPlayerName}`;
+        gameOverScreen.classList.remove('hidden');
+      } catch (error) {
+        log(`Error showing game over: ${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * Handle mouse movement
+     */
+    document.addEventListener('mousemove', (event) => {
+      if (socket && isGameActive && myPlayerId) {
+        try {
+          const mouseX = event.clientX + camera.x;
+          const mouseY = event.clientY + camera.y;
+          socket.emit('move', { x: mouseX, y: mouseY });
+        } catch (error) {
+          log(`Error sending move: ${error.message}`, 'error');
+        }
+      }
+    });
+
+    // Event Listeners
+    startButton.addEventListener('click', startGame);
+    
+    nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        startGame();
+      }
+    });
+
+    respawnButton.addEventListener('click', () => {
+      location.reload();
+    });
+
+    // Focus name input on load
+    nameInput.focus();
+
+    log('Client initialized and ready');
+  </script>
+</body>
+</html>

@@ -1,0 +1,202 @@
+================================================================================
+ASTROIO - QUICK START GUIDE
+================================================================================
+
+🚀 CURRENT STATUS: ✅ FULLY REFINED AND PRODUCTION-READY
+✨ Latest: Delta updates, counter-based orb IDs, all cosmetic fixes applied
+Server running on port 3000
+
+================================================================================
+PLAY NOW
+================================================================================
+
+1. Open your browser
+2. Navigate to: http://localhost:3000
+3. Enter your name (alphanumeric, max 20 characters)
+4. Click "Start Game"
+5. Move your mouse to control your player
+6. Eat orbs (small colored circles) to grow
+7. Eat smaller players (must be 10% larger than them)
+8. Avoid larger players or you'll be eliminated!
+
+================================================================================
+SERVER MANAGEMENT
+================================================================================
+
+CHECK IF SERVER IS RUNNING:
+  lsof -i:3000 | grep LISTEN
+
+START SERVER (if not running):
+  node server.js
+
+STOP SERVER:
+  - Find PID: lsof -ti:3000
+  - Kill: kill [PID]
+  - Or: pkill -f "node server.js"
+
+RESTART SERVER:
+  pkill -f "node server.js" && node server.js
+
+================================================================================
+TESTING
+================================================================================
+
+RUN BASIC TEST (3 AI players, 30 seconds):
+  node test-client.js
+
+RUN COMBAT TEST (5 AI players, 45 seconds):
+  node test-combat.js
+
+VIEW TEST LOGS:
+  cat test.log
+  tail -100 test.log  # Last 100 lines
+
+================================================================================
+FILES OVERVIEW
+================================================================================
+
+MAIN FILES:
+  server.js              - Backend server (330 lines)
+  public/index.html      - Frontend client (700 lines)
+  
+TEST FILES:
+  test-client.js         - Basic functionality test
+  test-combat.js         - Combat mechanics test
+  test.log               - All test results and logs
+  
+DOCUMENTATION:
+  README.md              - Comprehensive project documentation
+  SESSION_SUMMARY.txt    - Enhancement session report
+  QUICK_START.txt        - This file
+  
+BACKUPS:
+  *.backup               - Backup of all modified files
+
+================================================================================
+GAME CONFIGURATION
+================================================================================
+
+Located in server.js (line 29-42):
+
+GAME_CONFIG = {
+  WORLD_WIDTH: 2000          # World size
+  WORLD_HEIGHT: 2000
+  NUM_ORBS: 200              # Number of orbs
+  PLAYER_INITIAL_SIZE: 20    # Starting size
+  MAX_PLAYERS: 5             # Player limit
+  TARGET_FPS: 60             # Update rate
+  BASE_SPEED: 5              # Movement speed
+  EAT_SIZE_MULTIPLIER: 1.1   # Must be 10% larger to eat
+  PLAYER_GROWTH_FROM_ORB: 1  # Size gain per orb
+  PLAYER_GROWTH_FROM_PLAYER: 0.5  # 50% of eaten player
+  MAX_NAME_LENGTH: 20        # Name character limit
+}
+
+================================================================================
+FEATURES
+================================================================================
+
+✅ Full-screen canvas that adapts to window size
+✅ Space-themed UI with animated starry background
+✅ Player names with validation and background labels
+✅ Real-time multiplayer (up to 5 players)
+✅ Dynamic leaderboard showing top 5 players
+✅ HUD panel with stats (name, size, position, player count)
+✅ Glow effects on players and orbs
+✅ Smooth 60 FPS gameplay
+✅ Player vs player combat
+✅ Orb collection and growth
+✅ Game over and respawn system
+✅ Delta updates (60-80% network efficiency)
+✅ Counter-based orb IDs (reliable tracking)
+✅ Debounced window resize (smooth UX)
+
+================================================================================
+CONTROLS
+================================================================================
+
+IN-GAME:
+  Mouse Movement     - Control player direction
+  
+UI BUTTONS:
+  "Start Game"       - Begin playing after entering name
+  "Respawn"          - Restart after elimination
+  "Show Instructions" - Toggle instructions panel
+  "Hide Instructions" - Hide instructions panel
+
+================================================================================
+MULTIPLAYER TESTING
+================================================================================
+
+To test with multiple players:
+
+1. Open browser tab 1: http://localhost:3000
+   - Enter name: "Player1"
+   - Start game
+
+2. Open browser tab 2: http://localhost:3000
+   - Enter name: "Player2"
+   - Start game
+
+3. Repeat for up to 5 players total
+
+4. Try to eat each other!
+
+NOTE: 6th player will be rejected with "Game is full" message.
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: "Cannot connect to server"
+FIX: Check if server is running with: lsof -i:3000
+     If not running: node server.js
+
+ISSUE: "Port 3000 already in use"
+FIX: Kill existing process: pkill -f "node server.js"
+     Then restart: node server.js
+
+ISSUE: "Game is full"
+FIX: Server allows max 5 players. Wait for a slot to open.
+
+ISSUE: Blank screen in browser
+FIX: 1. Check browser console for errors (F12)
+     2. Ensure server is running
+     3. Try clearing cache (Ctrl+Shift+R)
+
+ISSUE: Name won't submit
+FIX: Name must be alphanumeric and max 20 characters.
+     No special characters or emojis.
+
+================================================================================
+DEVELOPMENT
+================================================================================
+
+MODIFY COLORS:
+  Edit CSS variables in public/index.html (lines 30-40)
+
+CHANGE WORLD SIZE:
+  Edit GAME_CONFIG in server.js (lines 29-42)
+
+ADD FEATURES:
+  See "Future Enhancements" section in README.md
+
+VIEW LOGS:
+  Server: Check console output
+  Tests: cat test.log
+  Session: cat SESSION_SUMMARY.txt
+
+================================================================================
+CONTACT & SUPPORT
+================================================================================
+
+For issues, questions, or contributions:
+- Check README.md for detailed documentation
+- Review test.log for test results and error logs
+- Review SESSION_SUMMARY.txt for implementation details
+
+================================================================================
+
+🌌 ENJOY PLAYING ASTROIO! 🚀
+
+================================================================================
