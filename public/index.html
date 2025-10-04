@@ -358,6 +358,22 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
     }
+
+    /* === Minimap (added) === */
+    #minimap {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: 200px;
+      height: 140px;
+      border-radius: 12px;
+      border: 2px solid rgba(138,43,226,0.35);
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 30, 0.9));
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      z-index: 1200;
+      overflow: hidden;
+    }
+    #minimapCanvas { width: 100%; height: 100%; display: block; }
   </style>
 </head>
 <body>
@@ -425,6 +441,11 @@
     </div>
   </div>
 
+  <!-- Minimap (added) -->
+  <div id="minimap">
+    <canvas id="minimapCanvas" width="200" height="140"></canvas>
+  </div>
+
   <!-- PixiJS CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.2/browser/pixi.min.js"></script>
   
@@ -433,21 +454,20 @@
 
   <script>
     /**
-     * AstroIo - Enhanced Frontend Client
+     * AstroIo - Enhanced Frontend Client (Levels + Minimap + Zoom)
      * 
-     * Features:
-     * - Full-screen responsive canvas
-     * - Name selection and display
-     * - Enhanced UI with space theme
-     * - Leaderboard
-     * - Error handling
-     * - Dynamic window resizing
+     * Only necessary changes added:
+     * - Level progression with zoom transition at 200/400/600...
+     * - Camera zoom shrinks as you grow
+     * - Colored "nebulosa" orbs
+     * - Minimap
+     * - Yellow star-shaped bots (if server flags isBot or name starts with "★ Bot")
      */
 
     // Logging utility
     function log(message, type = 'info') {
       const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
+      console.log(`[\${timestamp}] [\${type.toUpperCase()}] \${message}`);
     }
 
     // Game State
@@ -458,6 +478,12 @@
     let camera = { x: 0, y: 0 };
     let isGameActive = false;
     let finalSize = 0;
+
+    // Level/zoom state (added)
+    let viewScale = 1.0;
+    let lastLevelTier = -1;     // -1 -> not in game yet
+    let isTransition = false;   // level transition flag
+    let transitionOverlay = null;
 
     // Client-side game state for delta updates
     let clientGameState = {
@@ -487,6 +513,10 @@
     const leaderboard = document.getElementById('leaderboard');
     const gameOverScreen = document.getElementById('gameOverScreen');
     const respawnButton = document.getElementById('respawnButton');
+
+    // Minimap (added)
+    const miniCanvas = document.getElementById('minimapCanvas');
+    const miniCtx = miniCanvas.getContext('2d');
 
     /**
      * Initialize PixiJS with full-screen canvas
@@ -519,9 +549,18 @@
         worldContainer = new PIXI.Container();
         app.stage.addChild(worldContainer);
 
+        // Transition overlay (added)
+        transitionOverlay = new PIXI.Graphics();
+        transitionOverlay.beginFill(0x000000, 0);
+        transitionOverlay.drawRect(0, 0, app.screen.width, app.screen.height);
+        transitionOverlay.endFill();
+        transitionOverlay.zIndex = 9999;
+        app.stage.addChild(transitionOverlay);
+        app.stage.sortableChildren = true;
+
         log('PixiJS initialized with full-screen canvas');
       } catch (error) {
-        log(`Error initializing PixiJS: ${error.message}`, 'error');
+        log(`Error initializing PixiJS: \${error.message}`, 'error');
         showError('Failed to initialize game graphics');
       }
     }
@@ -573,7 +612,7 @@
           stars.push(star);
         }
 
-        log(`Created ${numStars} stars with parallax and twinkling`);
+        log(`Created \${numStars} stars with parallax and twinkling`);
 
         // Add twinkling animation to ticker
         app.ticker.add(() => {
@@ -584,12 +623,12 @@
               star.alpha = star.baseAlpha * (0.7 + 0.3 * Math.sin(time * star.twinkleSpeed + star.twinkleOffset));
             });
           } catch (error) {
-            log(`Error in star animation: ${error.message}`, 'error');
+            log(`Error in star animation: \${error.message}`, 'error');
           }
         });
 
       } catch (error) {
-        log(`Error creating starry background: ${error.message}`, 'error');
+        log(`Error creating starry background: \${error.message}`, 'error');
       }
     }
 
@@ -603,11 +642,12 @@
         const parallaxFactor = 0.2; // Stars move 20% of camera movement (slower = further away)
 
         stars.forEach(star => {
+          // account for camera world coords (scale doesn't affect star layer directly)
           star.x = star.baseX - camera.x * parallaxFactor;
           star.y = star.baseY - camera.y * parallaxFactor;
         });
       } catch (error) {
-        log(`Error updating star parallax: ${error.message}`, 'error');
+        log(`Error updating star parallax: \${error.message}`, 'error');
       }
     }
 
@@ -621,7 +661,19 @@
       resizeTimeout = setTimeout(() => {
         if (app) {
           app.renderer.resize(window.innerWidth, window.innerHeight);
-          log(`Canvas resized to ${window.innerWidth}x${window.innerHeight}`);
+          // resize overlay
+          if (transitionOverlay) {
+            transitionOverlay.clear();
+            transitionOverlay.beginFill(0x000000, 0);
+            transitionOverlay.drawRect(0, 0, app.screen.width, app.screen.height);
+            transitionOverlay.endFill();
+          }
+          log(`Canvas resized to \${window.innerWidth}x\${window.innerHeight}`);
+        }
+        // keep minimap crisp
+        if (miniCanvas) {
+          miniCanvas.width = 200;
+          miniCanvas.height = 140;
         }
       }, 100);
     }
@@ -668,7 +720,7 @@
       }
 
       myPlayerName = name;
-      log(`Starting game with name: ${myPlayerName}`);
+      log(`Starting game with name: \${myPlayerName}`);
 
       // Hide name modal
       nameModal.classList.add('hidden');
@@ -701,7 +753,7 @@
             
             errorMessage.textContent = '';
           } catch (error) {
-            log(`Error loading game: ${error.message}`, 'error');
+            log(`Error loading game: \${error.message}`, 'error');
             showError('Failed to load game assets. Please refresh.');
           }
         });
@@ -725,9 +777,9 @@
             worldWidth = data.worldWidth;
             worldHeight = data.worldHeight;
             isGameActive = true;
-            log(`Initialized as player ${myPlayerId}`);
+            log(`Initialized as player \${myPlayerId}`);
           } catch (error) {
-            log(`Error handling init: ${error.message}`, 'error');
+            log(`Error handling init: \${error.message}`, 'error');
           }
         });
 
@@ -739,17 +791,17 @@
               location.reload();
             }, 3000);
           } catch (error) {
-            log(`Error handling gameFull: ${error.message}`, 'error');
+            log(`Error handling gameFull: \${error.message}`, 'error');
           }
         });
 
         socket.on('gameOver', (data) => {
           try {
-            log(`Game over: ${data.message}`);
+            log(`Game over: \${data.message}`);
             isGameActive = false;
             showGameOver(data);
           } catch (error) {
-            log(`Error handling gameOver: ${error.message}`, 'error');
+            log(`Error handling gameOver: \${error.message}`, 'error');
           }
         });
 
@@ -759,7 +811,7 @@
               updateGameState(state);
             }
           } catch (error) {
-            log(`Error handling gameState: ${error.message}`, 'error');
+            log(`Error handling gameState: \${error.message}`, 'error');
           }
         });
 
@@ -768,9 +820,60 @@
         });
 
       } catch (error) {
-        log(`Error connecting to server: ${error.message}`, 'error');
+        log(`Error connecting to server: \${error.message}`, 'error');
         showError('Failed to connect to server');
       }
+    }
+
+    /** Palette (for colored "nebulosa" orbs) */
+    const ORB_PALETTE = ['#ff5a5a','#ffb84d','#ffd54d','#8cf2a0','#6bd9ff','#a98bff','#ff7ae6'];
+    function colorFromId(id) {
+      let h = 0; for (let i=0;i<id.length;i++){ h = (h*31 + id.charCodeAt(i)) >>> 0; }
+      return ORB_PALETTE[h % ORB_PALETTE.length];
+    }
+    function getOrbColor(orb) {
+      return PIXI.utils.string2hex(orb.color || colorFromId(orb.id || 'orb'));
+    }
+
+    /** Level helpers */
+    function getLevelTier(size) { return Math.floor(size / 200); } // 0: 0-199, 1:200-399, 2:400-599...
+    function maybeRunLevelTransition(mySize) {
+      const tier = getLevelTier(mySize);
+      if (tier !== lastLevelTier) {
+        lastLevelTier = tier;
+        runZoomTransition();
+      }
+    }
+    function runZoomTransition() {
+      if (!app || isTransition) return;
+      isTransition = true;
+      const dur = 420; // ms
+      const start = performance.now();
+      const baseScale = viewScale;
+      const pulse = baseScale * 0.88;
+
+      const step = () => {
+        const t = (performance.now() - start) / dur;
+        const k = Math.min(1, Math.max(0, t));
+        // scale pulse out then in
+        const s = k < 0.5
+          ? baseScale + (pulse - baseScale) * (k / 0.5)
+          : pulse + (baseScale - pulse) * ((k - 0.5) / 0.5);
+        worldContainer.scale.set(s, s);
+        // overlay flash
+        const alpha = (k < 0.5 ? k/0.5 : (1-k)/0.5) * 0.6;
+        transitionOverlay.clear();
+        transitionOverlay.beginFill(0x000000, alpha);
+        transitionOverlay.drawRect(0, 0, app.screen.width, app.screen.height);
+        transitionOverlay.endFill();
+
+        if (k < 1) requestAnimationFrame(step);
+        else {
+          transitionOverlay.clear();
+          isTransition = false;
+        }
+      };
+      requestAnimationFrame(step);
     }
 
     /**
@@ -832,22 +935,26 @@
           renderOrb(orb);
         });
 
-        // Update camera
+        // Update camera & HUD
         if (myPlayerId && clientGameState.players[myPlayerId]) {
           const myPlayer = clientGameState.players[myPlayerId];
-          updateCamera(myPlayer);
+          updateCamera(myPlayer);            // (changed: includes zoom)
           updateHUD(myPlayer, Object.keys(clientGameState.players).length);
+          maybeRunLevelTransition(myPlayer.size); // (added)
         }
 
         // Update leaderboard
         updateLeaderboard(clientGameState.players);
+
+        // Redraw minimap (added)
+        drawMinimap();
       } catch (error) {
-        log(`Error updating game state: ${error.message}`, 'error');
+        log(`Error updating game state: \${error.message}`, 'error');
       }
     }
 
     /**
-     * Render player with name
+     * Render player with name (bots as yellow stars)
      */
     function renderPlayer(player) {
       try {
@@ -878,35 +985,59 @@
         graphics.clear();
 
         const isMe = player.id === myPlayerId;
-        const color = isMe ? 0x00ff88 : 0x0088ff;
-        const glowColor = isMe ? 0x00ffaa : 0x00aaff;
+        const isBot = !!player.isBot || (typeof player.name === 'string' && player.name.startsWith('★ Bot'));
+        if (isBot) {
+          // Star bot (yellow)
+          drawStar(graphics, player.x, player.y, 5, Math.max(player.size, 8), Math.max(player.size * 0.5, 4), 0xFFD84A, 0xFFF0A3);
+        } else {
+          const color = isMe ? 0x00ff88 : 0x0088ff;
+          const glowColor = isMe ? 0x00ffaa : 0x00aaff;
 
-        // Draw glow
-        graphics.beginFill(glowColor, 0.2);
-        graphics.drawCircle(0, 0, player.size + 8);
-        graphics.endFill();
+          // Draw glow
+          graphics.beginFill(glowColor, 0.2);
+          graphics.drawCircle(player.x, player.y, player.size + 8);
+          graphics.endFill();
 
-        // Draw player circle
-        graphics.beginFill(color, 0.9);
-        graphics.lineStyle(3, 0xffffff, 0.6);
-        graphics.drawCircle(0, 0, player.size);
-        graphics.endFill();
-
-        // Position graphics
-        graphics.x = player.x;
-        graphics.y = player.y;
+          // Draw player circle
+          graphics.beginFill(color, 0.9);
+          graphics.lineStyle(3, 0xffffff, 0.6);
+          graphics.drawCircle(player.x, player.y, player.size);
+          graphics.endFill();
+        }
 
         // Update name text
         nameText.text = player.name || 'Player';
         nameText.x = player.x;
         nameText.y = player.y - player.size - 20;
       } catch (error) {
-        log(`Error rendering player ${player.id}: ${error.message}`, 'error');
+        log(`Error rendering player \${player.id}: \${error.message}`, 'error');
       }
     }
 
+    // Helper: draw a 5-point star
+    function drawStar(g, x, y, spikes, outerR, innerR, fillColor=0xFFD84A, glowColor=0xFFF0A3) {
+      // glow
+      g.beginFill(glowColor, 0.25);
+      g.drawCircle(x, y, outerR + 8);
+      g.endFill();
+
+      const step = Math.PI / spikes;
+      let rot = -Math.PI / 2;
+      const pts = [];
+      for (let i = 0; i < spikes; i++) {
+        pts.push(x + Math.cos(rot) * outerR, y + Math.sin(rot) * outerR);
+        rot += step;
+        pts.push(x + Math.cos(rot) * innerR, y + Math.sin(rot) * innerR);
+        rot += step;
+      }
+      g.beginFill(fillColor, 0.95);
+      g.lineStyle(3, 0xffffff, 0.6);
+      g.drawPolygon(pts);
+      g.endFill();
+    }
+
     /**
-     * Render orb with glow effect
+     * Render orb with colored nebulosa effect
      */
     function renderOrb(orb) {
       try {
@@ -920,42 +1051,50 @@
 
         graphics.clear();
 
+        const col = getOrbColor(orb);
+
         // Draw glow
-        graphics.beginFill(0xff4444, 0.3);
-        graphics.drawCircle(0, 0, orb.size + 4);
+        graphics.beginFill(col, 0.30);
+        graphics.drawCircle(orb.x, orb.y, orb.size + 4);
         graphics.endFill();
 
         // Draw orb
-        graphics.beginFill(0xff2222, 1);
-        graphics.lineStyle(2, 0xff6666, 0.8);
-        graphics.drawCircle(0, 0, orb.size);
+        graphics.beginFill(col, 1);
+        graphics.lineStyle(2, col, 0.85);
+        graphics.drawCircle(orb.x, orb.y, orb.size);
         graphics.endFill();
-
-        graphics.x = orb.x;
-        graphics.y = orb.y;
       } catch (error) {
-        log(`Error rendering orb ${orb.id}: ${error.message}`, 'error');
+        log(`Error rendering orb \${orb.id}: \${error.message}`, 'error');
       }
     }
 
     /**
-     * Update camera to follow player
+     * Update camera to follow player (with zoom that shrinks as you grow)
      */
     function updateCamera(player) {
       try {
-        camera.x = player.x - app.screen.width / 2;
-        camera.y = player.y - app.screen.height / 2;
+        // Desired scale: small players zoom-in, big players zoom-out
+        const desiredScale = clamp(1.4 - (player.size / 250), 0.6, 1.4);
+        viewScale = lerp(viewScale || desiredScale, desiredScale, 0.15);
+        worldContainer.scale.set(viewScale, viewScale);
 
-        camera.x = Math.max(0, Math.min(worldWidth - app.screen.width, camera.x));
-        camera.y = Math.max(0, Math.min(worldHeight - app.screen.height, camera.y));
+        // Clamp camera using scaled viewport
+        const viewW = app.screen.width / viewScale;
+        const viewH = app.screen.height / viewScale;
 
-        worldContainer.x = -camera.x;
-        worldContainer.y = -camera.y;
+        camera.x = player.x - viewW / 2;
+        camera.y = player.y - viewH / 2;
+
+        camera.x = Math.max(0, Math.min(worldWidth - viewW, camera.x));
+        camera.y = Math.max(0, Math.min(worldHeight - viewH, camera.y));
+
+        worldContainer.x = -camera.x * viewScale;
+        worldContainer.y = -camera.y * viewScale;
 
         // Update star parallax effect
         updateStarParallax();
       } catch (error) {
-        log(`Error updating camera: ${error.message}`, 'error');
+        log(`Error updating camera: \${error.message}`, 'error');
       }
     }
 
@@ -967,10 +1106,10 @@
         document.getElementById('size').textContent = Math.floor(player.size);
         document.getElementById('players').textContent = playerCount;
         document.getElementById('position').textContent = 
-          `${Math.floor(player.x)}, ${Math.floor(player.y)}`;
+          `\${Math.floor(player.x)}, \${Math.floor(player.y)}`;
         finalSize = Math.floor(player.size);
       } catch (error) {
-        log(`Error updating HUD: ${error.message}`, 'error');
+        log(`Error updating HUD: \${error.message}`, 'error');
       }
     }
 
@@ -994,35 +1133,7 @@
           leaderboardList.appendChild(entry);
         });
       } catch (error) {
-        log(`Error updating leaderboard: ${error.message}`, 'error');
-      }
-    }
-
-    /**
-     * Clean up removed objects
-     */
-    function cleanupRemovedObjects(currentPlayers, currentOrbs) {
-      try {
-        Object.keys(playerGraphics).forEach(playerId => {
-          if (!currentPlayers[playerId]) {
-            worldContainer.removeChild(playerGraphics[playerId]);
-            delete playerGraphics[playerId];
-            if (playerNameTexts[playerId]) {
-              worldContainer.removeChild(playerNameTexts[playerId]);
-              delete playerNameTexts[playerId];
-            }
-          }
-        });
-
-        const currentOrbIds = new Set(currentOrbs.map(orb => orb.id));
-        Object.keys(orbGraphics).forEach(orbId => {
-          if (!currentOrbIds.has(orbId)) {
-            worldContainer.removeChild(orbGraphics[orbId]);
-            delete orbGraphics[orbId];
-          }
-        });
-      } catch (error) {
-        log(`Error cleaning up objects: ${error.message}`, 'error');
+        log(`Error updating leaderboard: \${error.message}`, 'error');
       }
     }
 
@@ -1033,27 +1144,73 @@
       try {
         document.getElementById('gameOverMessage').textContent = data.message;
         document.getElementById('finalStats').textContent = 
-          `Final Size: ${finalSize} | Name: ${myPlayerName}`;
+          `Final Size: \${finalSize} | Name: \${myPlayerName}`;
         gameOverScreen.classList.remove('hidden');
       } catch (error) {
-        log(`Error showing game over: ${error.message}`, 'error');
+        log(`Error showing game over: \${error.message}`, 'error');
       }
     }
 
     /**
      * Handle mouse movement
+     * (changed: send world coords considering current zoom)
      */
     document.addEventListener('mousemove', (event) => {
-      if (socket && isGameActive && myPlayerId) {
+      if (socket && isGameActive && myPlayerId && app) {
         try {
-          const mouseX = event.clientX + camera.x;
-          const mouseY = event.clientY + camera.y;
-          socket.emit('move', { x: mouseX, y: mouseY });
+          const mouseX = camera.x + (event.clientX / (viewScale || 1));
+          const mouseY = camera.y + (event.clientY / (viewScale || 1));
+          socket.emit('move', { x: clamp(mouseX, 0, worldWidth), y: clamp(mouseY, 0, worldHeight) });
         } catch (error) {
-          log(`Error sending move: ${error.message}`, 'error');
+          log(`Error sending move: \${error.message}`, 'error');
         }
       }
     });
+
+    // Minimap drawing (added)
+    function drawMinimap() {
+      if (!miniCtx) return;
+      const w = miniCanvas.width, h = miniCanvas.height;
+      miniCtx.clearRect(0,0,w,h);
+
+      // frame
+      miniCtx.fillStyle = 'rgba(0,0,0,0.35)';
+      miniCtx.strokeStyle = 'rgba(138,43,226,0.5)';
+      miniCtx.lineWidth = 2;
+      miniCtx.fillRect(0,0,w,h);
+      miniCtx.strokeRect(0,0,w,h);
+
+      const sx = w / worldWidth;
+      const sy = h / worldHeight;
+
+      // orbs
+      clientGameState.orbs.forEach(o => {
+        miniCtx.fillStyle = (o.color || colorFromId(o.id));
+        miniCtx.fillRect(o.x * sx, o.y * sy, 2, 2);
+      });
+
+      // players
+      Object.values(clientGameState.players).forEach(p => {
+        const isMe = p.id === myPlayerId;
+        const isBot = !!p.isBot || (typeof p.name === 'string' && p.name.startsWith('★ Bot'));
+        miniCtx.fillStyle = isMe ? '#ffffff' : (isBot ? '#FFD84A' : '#66b3ff');
+        const r = Math.max(2, Math.min(4, p.size * 0.02));
+        miniCtx.beginPath();
+        miniCtx.arc(p.x * sx, p.y * sy, r, 0, Math.PI * 2);
+        miniCtx.fill();
+      });
+
+      // viewport rectangle
+      const viewW = (app ? app.screen.width / (viewScale || 1) : 0);
+      const viewH = (app ? app.screen.height / (viewScale || 1) : 0);
+      miniCtx.strokeStyle = '#ffffff';
+      miniCtx.lineWidth = 1;
+      miniCtx.strokeRect(camera.x * sx, camera.y * sy, viewW * sx, viewH * sy);
+    }
+
+    // Utils
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function lerp(a,b,t){ return a + (b-a)*t; }
 
     // Event Listeners
     startButton.addEventListener('click', startGame);
