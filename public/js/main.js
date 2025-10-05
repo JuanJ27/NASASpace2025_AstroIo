@@ -32,6 +32,12 @@ class AstroIoGame {
     this.lastUpdateTime = performance.now();
     this.customLevels = {}; // Registro de niveles personalizados
     // ==============================================================
+
+    // ===== Quantum Tunnel (client emitter) =====
+    this.QT_INTERVAL_MS = 1000;       // check once per second
+    this.QT_TRIGGER_THRESHOLD = 0.95; // ~5% chance
+    this.QT_MIN_R = 30;               // min radius around current pos
+    this._qtTimer = null;
   }
 
   /**
@@ -199,6 +205,9 @@ class AstroIoGame {
       this.camera = new GameCamera(this.worldWidth, this.worldHeight);
       
       console.log(`✅ Initialized as player ${this.myPlayerId}`);
+
+      // >>> START Quantum Tunnel client emitter after we are active
+      this._startQuantumTunnel();
     });
 
     this.socket.on('gameFull', (data) => {
@@ -210,6 +219,10 @@ class AstroIoGame {
     this.socket.on('gameOver', (data) => {
       console.log(`💀 Game over: ${data.message}`);
       this.isGameActive = false;
+
+      // >>> STOP Quantum Tunnel when game ends
+      this._stopQuantumTunnel();
+
       this.ui.showGameOver(data, this.finalSize, this.myPlayerName);
     });
 
@@ -449,13 +462,8 @@ class AstroIoGame {
       console.log(`========================================`);
       
       // ========== GESTIÓN AUTOMÁTICA DE NIVELES PERSONALIZADOS ==========
-      
-      // Salir del nivel anterior (si tenía uno personalizado)
       this.exitCustomLevel(oldLevel);
-      
-      // Entrar al nivel nuevo (si tiene uno personalizado)
       this.enterCustomLevel(currentLevel);
-      
       // ==================================================================
       
       // Ejecutar animación de transición visual
@@ -483,7 +491,6 @@ class AstroIoGame {
    */
   enterCustomLevel(level) {
     const customLevel = this.customLevels[level];
-    
     if (customLevel && customLevel.onEnter) {
       console.log(`✨ Entering custom level: ${level}`);
       customLevel.onEnter();
@@ -497,7 +504,6 @@ class AstroIoGame {
    */
   exitCustomLevel(level) {
     const customLevel = this.customLevels[level];
-    
     if (customLevel && customLevel.onExit) {
       console.log(`👋 Exiting custom level: ${level}`);
       customLevel.onExit();
@@ -564,6 +570,77 @@ class AstroIoGame {
     };
     
     requestAnimationFrame(step);
+  }
+
+  // ====== Quantum Tunnel helpers & runner (methods) ======
+  _clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  _sampleRadius1OverR(rMin, rMax) {
+    const u = Math.random();
+    const ratio = rMax / rMin;
+    return rMin * Math.pow(ratio, u);
+  }
+
+  _sampleOffset1OverR(rMin, rMax) {
+    const r = this._sampleRadius1OverR(rMin, rMax);
+    const theta = Math.random() * Math.PI * 2;
+    return { dx: r * Math.cos(theta), dy: r * Math.sin(theta) };
+  }
+
+  _startQuantumTunnel() {
+    if (this._qtTimer) return;
+    this._qtTimer = setInterval(() => {
+      try {
+        if (!this.isGameActive || !this.myPlayerId) return;
+        if (Math.random() <= this.QT_TRIGGER_THRESHOLD) return; // ~5% chance
+
+        const me = this.clientGameState.players[this.myPlayerId];
+        if (!me || me.isAlive === false) return;
+
+        const W = this.worldWidth  || 2000;
+        const H = this.worldHeight || 2000;
+
+        // Wide reach: ~half diagonal (clamped to world)
+        const diag = Math.hypot(W, H);
+        const R_MIN = this.QT_MIN_R;
+        const R_MAX = Math.max(R_MIN + 1, 0.5 * diag);
+
+        const { dx, dy } = this._sampleOffset1OverR(R_MIN, R_MAX);
+        const tx = this._clamp(me.x + dx, 0, W);
+        const ty = this._clamp(me.y + dy, 0, H);
+
+        // Emit to server (authoritative snap)
+        if (this.socket?.socket && typeof this.socket.socket.emit === 'function') {
+          this.socket.socket.emit('quantumTunnel', {
+            playerId: this.myPlayerId,
+            from: { x: me.x, y: me.y },
+            to:   { x: tx, y: ty },
+            reason: 'tomas_quantum_tunnel_self'
+          });
+        }
+
+        // Small overlay flash (optional)
+        try {
+          if (this.renderer?.transitionOverlay && this.renderer?.app) {
+            const o = this.renderer.transitionOverlay;
+            const w = this.renderer.app.screen.width;
+            const h = this.renderer.app.screen.height;
+            o.clear(); o.beginFill(0x000000, 0.35); o.drawRect(0,0,w,h); o.endFill();
+            setTimeout(() => o.clear(), 90);
+          }
+        } catch (_) {}
+      } catch (e) {
+        console.warn('[QT] client tick error:', e);
+      }
+    }, this.QT_INTERVAL_MS);
+
+    console.log('🌀 Quantum Tunnel: client emitter enabled.');
+  }
+
+  _stopQuantumTunnel() {
+    if (this._qtTimer) clearInterval(this._qtTimer);
+    this._qtTimer = null;
+    console.log('🌀 Quantum Tunnel: client emitter disabled.');
   }
 }
 

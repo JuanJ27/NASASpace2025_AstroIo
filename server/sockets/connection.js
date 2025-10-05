@@ -1,6 +1,9 @@
 const { gameState, GAME_CONFIG } = require('../core/gameState');
 const { createPlayer } = require('../core/player');
 
+// helper clamp (top of file or reuse existing one)
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
 function handleConnection(io, socket) {
   console.log(`Player connected: ${socket.id}`);
 
@@ -36,6 +39,36 @@ function handleConnection(io, socket) {
 
     console.log(`Player joined: ${playerName} (${socket.id})`);
   });
+
+  // inside io.on('connection', socket => { ... }) or your connection handler:
+  socket.on('quantumTunnel', (payload = {}) => {
+    try {
+      const p = gameState.players[socket.id];
+      if (!p || p.isAlive === false) return;
+
+      const to = payload.to || {};
+      const W = GAME_CONFIG.WORLD_WIDTH;
+      const H = GAME_CONFIG.WORLD_HEIGHT;
+
+      // simple rate limit (avoid abuse & spam)
+      const now = Date.now();
+      if (p._lastTeleportAt && (now - p._lastTeleportAt) < 800) return; // 0.8s min gap
+      p._lastTeleportAt = now;
+
+      // snap
+      p.x = clamp(to.x ?? p.x, 0, W);
+      p.y = clamp(to.y ?? p.y, 0, H);
+      // stop any velocity to avoid jitter back toward old path
+      p.vx = 0;
+      p.vy = 0;
+
+      // optionally: mark dirty immediately if you have a dirty-flag system
+      // otherwise the main game loop will include this in the next delta
+    } catch (e) {
+      console.warn('quantumTunnel handler error:', e);
+    }
+  });
+
 
   // Disconnect
   socket.on('disconnect', () => {
