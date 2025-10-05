@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstroIo - Space Conquest - Ginkgoo</title>
+    <title>AstroIo - Darwin Edition - Cluster Level</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <link href="/css/index.css" rel="stylesheet">
@@ -12,6 +12,9 @@
     
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
+
+    <!-- ✨✨✨ NUEVA LÍNEA - AGREGAR AQUÍ ✨✨✨ -->
+    <script src="/shared/levels-config.js"></script>
     
     <!-- Core JS -->
     <script src="/js/core/elements.js"></script>
@@ -20,16 +23,18 @@
     <script src="/js/core/camera.js"></script>
     <script src="/js/core/ui.js"></script>
     
-    <!-- Levels JS -->
+    <!-- Levels JS (originales - no se usan pero los dejamos por compatibilidad) -->
     <script src="/js/levels/level1-star.js"></script>
     <script src="/js/levels/level2-galaxy.js"></script>
     <script src="/js/levels/level3-cluster.js"></script>
     
-    <!-- Main Entry Point -->
-    <script src="/js/main.js"></script>
-
-    <!-- Development JS -->
+    <!-- ========== DARWIN: TUS ARCHIVOS PERSONALIZADOS ========== -->
+    <!-- Tu archivo de funciones del nivel (cargar PRIMERO) -->
     <script src="/js/levels/functions_darwin.js"></script>
+    
+    <!-- Tu main personalizado (cargar DESPUÉS) -->
+    <script src="/js/main.js"></script>
+    <!-- ======================================================== -->
 </head>
 <body>
     <div id="background"></div>
@@ -38,7 +43,7 @@
   <div id="nameModal">
     <div id="nameForm">
       <h1>ASTRO.IO</h1>
-      <p class="subtitle">Enter the Space Battle Arena</p>
+      <p class="subtitle">Darwin Edition - Cluster Level</p>
       <input 
         type="text" 
         id="nameInput" 
@@ -78,7 +83,7 @@
     <div id="leaderboardList"></div>
   </div>
 
-  <!-- Scale Rule (replaces old Instructions block) -->
+  <!-- Scale Rule -->
   <div id="scalePanel" class="hidden">
     <div id="scaleTitle">SCALE</div>
     <div id="scaleBar"><div id="scaleFill"></div></div>

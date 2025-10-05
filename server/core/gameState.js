@@ -1,3 +1,6 @@
+// ✨✨✨ NUEVA LÍNEA - AGREGAR AL INICIO ✨✨✨ // la agrego darwin 
+const { LEVELS_CONFIG } = require('../../shared/levelsConfig');
+
 const GAME_CONFIG = {
   WORLD_WIDTH: parseInt(process.env.WORLD_WIDTH) || 2000,
   WORLD_HEIGHT: parseInt(process.env.WORLD_HEIGHT) || 2000,
@@ -19,13 +22,8 @@ const GAME_CONFIG = {
   BOT_RESPAWN_DELAY_MS: 1000 * 15
 };
 
-const LEVELS = [
-  { min: 0, max: 199.999, key: 'solar', name: 'Solar System' },
-  { min: 200, max: 399.999, key: 'galaxy', name: 'Galaxy' },
-  { min: 400, max: 599.999, key: 'cluster', name: 'Cluster' },
-  { min: 600, max: 799.999, key: 'supercluster', name: 'Supercluster' },
-  { min: 800, max: 9999, key: 'cosmicweb', name: 'Cosmic Web' }
-];
+// ✨✨✨ USAR CONFIGURACIÓN CENTRALIZADA ✨✨✨ // darwin modifico esto
+const LEVELS = LEVELS_CONFIG;
 
 const gameState = {
   players: {},

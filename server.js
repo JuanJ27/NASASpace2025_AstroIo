@@ -58,10 +58,21 @@ app.get('/', (req, res) => {
     res.sendFile(filePath);
   }
 });
+
+// Servir estáticos // lo agrego darwin
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Servir estáticos
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ✨ AGREGAR ESTA LÍNEA AQUÍ (después de la línea anterior)
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
+// Socket.IO
+io.on('connection', (socket) => {
+  handleConnection(io, socket);
+  handleMovement(socket);
+}); // lo agrego darwin
 
 // Socket.IO
 io.on('connection', (socket) => {
