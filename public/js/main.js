@@ -70,6 +70,9 @@ class AstroIoGame {
       
       // Juan - Galaxy Expansion (Nivel 3: 80-99) - EJEMPLO
       { level: 3, instance: window.JuanGalaxyLevel, name: 'Juan Galaxy' },
+
+      // Profe - Galactic Scale (Nivel 3: 200-399)
+      { level: 3, instance: window.GalaxyLevelProfe, name: 'Galactic Scale' },
       
       // Tomás - Nebula Zone (Nivel 2: 60-79) - EJEMPLO
       { level: 2, instance: window.TomasNebulaLevel, name: 'Tomas Nebula' },
@@ -421,15 +424,15 @@ class AstroIoGame {
    * ============================================
    */
   getLevelInfo(size) {
-    if (size >= 20 && size < 200) {
+    if (size >= 2 && size < 20) {
       return { level: 0, name: 'Solar System 0.1', key: 'amns-micr', range: '20-39' };
-    } else if (size >= 200 && size < 400) {
+    } else if (size >= 20 && size < 40) {
       return { level: 1, name: 'Solar System 0.2', key: 'micr-m', range: '40-59' };
-    } else if (size >= 400 && size < 600) {
+    } else if (size >= 40 && size < 60) {
       return { level: 2, name: 'Solar System 0.3', key: 'm-Mm', range: '60-79' };
-    } else if (size >= 600 && size < 800) {
+    } else if (size >= 60 && size < 100) {
       return { level: 3, name: 'Galaxy', key: 'galaxy-Kpc', range: '80-99' };
-    } else if (size >= 800 && size <= 1000) {
+    } else if (size >= 100 && size <= 130) {
       return { level: 4, name: 'Cluster Galaxy', key: 'cluster-galaxy-Mpc', range: '100-119' };
     } else {
       return { level: 5, name: 'Beyond Cluster', key: 'beyond', range: '120+' };
