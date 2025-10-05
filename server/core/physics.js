@@ -59,9 +59,16 @@ function updatePlayerPosition(player, deltaTime) {
 /**
  * Verificar si un jugador puede comer a otro
  */
+// function canEat(eater, target) {
+//   if (!eater.isAlive || !target.isAlive) return false;
+//   return eater.size >= target.size * GAME_CONFIG.EAT_SIZE_MULTIPLIER;
+// }
+
 function canEat(eater, target) {
   if (!eater.isAlive || !target.isAlive) return false;
-  return eater.size >= target.size * GAME_CONFIG.EAT_SIZE_MULTIPLIER;
+  // Slightly friendlier threshold server-side
+  const THRESH = GAME_CONFIG.EAT_SIZE_MULTIPLIER || 1.1;
+  return eater.size >= target.size * Math.min(THRESH, 1.05);
 }
 
 /**

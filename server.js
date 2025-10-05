@@ -39,7 +39,7 @@ const USER = process.env.USER || '';
 // Rutas condicionales
 app.get('/', (req, res) => {
   if (NODE_ENV == 'development') {
-    console.log("••••• Entrando en modo desarrollo ••••");
+    console.log("••••• Entrando en modo desarrollo ••••" + USER);
     const devFiles = {
       'ginkgo': 'ginkgo_dev.html',
       'juan': 'juanjo_dev.html',
