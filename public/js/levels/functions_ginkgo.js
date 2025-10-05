@@ -158,12 +158,101 @@ class FloatingCardsManager {
         "description": "The universe's maternity ward where baby stars are born! One of the brightest nebulae visible to the naked eye from Earth.",
         "image": "14_orion_nebula.webp",
         "timeOut": 12
+      },
+      {
+        "id": 15,
+        "points_threshold": 412,
+        "title": "Omega Centauri Globular Cluster",
+        "scale": "~46 pc (Parsecs) / ~150 light-years",
+        "description": "The biggest and brightest globular cluster in the Milky Way, home to 10 million stars packed into a cosmic ball!",
+        "image": "15_omega_centauri.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 16,
+        "points_threshold": 490,
+        "title": "Sagittarius Dwarf Galaxy",
+        "scale": "~3 kpc (Kiloparsecs) / ~10,000 light-years",
+        "description": "A small galaxy being slowly eaten by the Milky Way! It's passing through our galactic disk right now.",
+        "image": "16_sagittarius_dwarf.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 17,
+        "points_threshold": 513,
+        "title": "Large Magellanic Cloud (LMC)",
+        "scale": "~9.86 kpc (Kiloparsecs) / ~32,200 light-years",
+        "description": "Our galaxy's satellite neighbor with 20 billion stars! Visible to the naked eye from the Southern Hemisphere.",
+        "image": "17_large_magellanic_cloud.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 18,
+        "points_threshold": 534,
+        "title": "The Milky Way Galaxy",
+        "scale": "~30 kpc (Kiloparsecs) / ~100,000 light-years",
+        "description": "Our home galaxy! A massive spiral with 200-400 billion stars, including our Sun. We live in one of its spiral arms.",
+        "image": "18_milky_way.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 19,
+        "points_threshold": 549,
+        "title": "Andromeda Galaxy (M31)",
+        "scale": "~67.45 kpc (Kiloparsecs) / ~220,000 light-years",
+        "description": "The largest galaxy in our Local Group with over 1 trillion stars! It's on a collision course with the Milky Way.",
+        "image": "19_andromeda_galaxy.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 20,
+        "points_threshold": 595,
+        "title": "Distance to Andromeda",
+        "scale": "~778 kpc (Kiloparsecs) / ~2.54 million light-years",
+        "description": "The gap between us and Andromeda! Light takes 2.5 million years to travel this distance. That's the nearest major galaxy!",
+        "image": "20_andromeda_distance.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 21,
+        "points_threshold": 620,
+        "title": "Virgo Cluster",
+        "scale": "~16.5 Mpc (Megaparsecs) / ~54 million light-years",
+        "description": "The nearest large galaxy cluster with over 2,000 galaxies! The heart of our Local Supercluster.",
+        "image": "21_virgo_cluster.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 22,
+        "points_threshold": 658,
+        "title": "Coma Cluster",
+        "scale": "~100 Mpc (Megaparsecs) / ~336 million light-years",
+        "description": "A massive cluster with over 1,000 galaxies! One of the first places where dark matter was detected.",
+        "image": "22_coma_cluster.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 23,
+        "points_threshold": 705,
+        "title": "Shapley Supercluster",
+        "scale": "~250 Mpc (Megaparsecs) / ~650 million light-years",
+        "description": "The biggest concentration of galaxies in our cosmic neighborhood! Contains thousands of galaxies and 25 clusters.",
+        "image": "23_shapley_supercluster.webp",
+        "timeOut": 10
+      },
+      {
+        "id": 24,
+        "points_threshold": 720,
+        "title": "Large-Scale Structure",
+        "scale": "~1 Gpc (Gigaparsec) / ~3.26 billion light-years",
+        "description": "At this scale, galaxies form cosmic webs! Long filaments and giant voids create the universe's foam-like structure.",
+        "image": "24_cosmic_web.webp",
+        "timeOut": 10
       }
     ];
 
     // Ordenar por threshold
     this.cards.sort((a, b) => a.points_threshold - b.points_threshold);
-    
     console.log(`✅ Loaded ${this.cards.length} curiosity cards`);
   }
 
