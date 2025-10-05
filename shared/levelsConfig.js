@@ -52,12 +52,81 @@
 //   }
 // ];
 
+/**
+ * ============================================
+ * CONFIGURACIÓN DE NIVELES CON SUBNIVELES
+ * Nivel 1: 3 subniveles (Átomos, Granos, Asteroides)
+ * Nivel 2: Galaxias (sin subniveles)
+ * Nivel 3: Supercúmulo (sin subniveles)
+ * ============================================
+ */
 const LEVELS_CONFIG = [
-  { min: 2,   max: 39,  key: 'amns-micr',          name: 'Solar System 0.1', clientLevel: 0, description: 'Å → µm' },
-  { min: 40,  max: 79,  key: 'micr-m',             name: 'Solar System 0.2', clientLevel: 1, description: 'µm → m' },
-  { min: 80,  max: 119, key: 'm-Mm',               name: 'Solar System 0.3', clientLevel: 2, description: 'm → Mm' },
-  { min: 120, max: 159, key: 'galaxy-Kpc',         name: 'Galaxy 0.1',       clientLevel: 3, description: 'Kpc' },
-  { min: 160, max: 200, key: 'cluster-galaxy-Mpc', name: 'Cluster Galaxy',   clientLevel: 4, description: 'Mpc' }
+  // NIVEL 1 - SUBNIVEL 1: Átomos
+  { 
+    min: 2,   
+    max: 13,  
+    key: 'atomos',          
+    name: 'Átomos', 
+    clientLevel: 0, 
+    level: 1,
+    sublevel: 1,
+    description: 'Å → µm (Átomos: H, He, O, C, Ne)'
+  },
+  // NIVEL 1 - SUBNIVEL 2: Granos de Polvo
+  { 
+    min: 14,  
+    max: 26,  
+    key: 'granos',             
+    name: 'Granos de Polvo', 
+    clientLevel: 1, 
+    level: 1,
+    sublevel: 2,
+    description: 'µm → m (Silicatos, Carbonáceos, Hielo, Óxidos)'
+  },
+  // NIVEL 1 - SUBNIVEL 3: Asteroides
+  { 
+    min: 27,  
+    max: 39, 
+    key: 'asteroides',               
+    name: 'Asteroides',       
+    clientLevel: 2, 
+    level: 1,
+    sublevel: 3,
+    description: 'm → Mm (Asteroides C, S, M)'
+  },
+  // Transición entre nivel 1 y 2 (sin contenido específico)
+  { 
+    min: 40,  
+    max: 119, 
+    key: 'transicion-sistema',               
+    name: 'Sistema Solar',       
+    clientLevel: 3, 
+    level: 1,
+    sublevel: 4,
+    description: 'Formación del Sistema Solar'
+  },
+  // NIVEL 2: Galaxias
+  { 
+    min: 120, 
+    max: 159, 
+    key: 'galaxias',         
+    name: 'Galaxias',       
+    clientLevel: 4,
+    level: 2,
+    sublevel: 1,
+    description: 'Kpc (Enanas, Cúmulos Globulares, Espirales)'
+  },
+  // NIVEL 3: Supercúmulo
+  { 
+    min: 160, 
+    max: 200, 
+    key: 'supercumulo', 
+    name: 'Supercúmulo',   
+    clientLevel: 5,
+    level: 3,
+    sublevel: 1,
+    description: 'Mpc (Elípticas, BCG)'
+  }
 ];
 
 /**

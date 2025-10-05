@@ -157,12 +157,47 @@ class AstroIoGame {
       loader.add('star_4', '/assets/star_4.webp');
     }
 
-    // Cargar texturas de jugadores (Nivel 1: Nebula para jugador, Sol2 para bots)
+    // Cargar texturas de jugadores según niveles
+    // Nivel 1 Subnivel 1-2: Nebula (átomo/grano)
     if (!loader.resources['nebula']) {
       loader.add('nebula', '/assets/nebula.webp');
     }
+    
+    // Nivel 1 Subnivel 3: Roca (asteroide)
+    if (!loader.resources['roca']) {
+      loader.add('roca', '/assets/roca.webp');
+    }
+    
+    // Nivel 1 Subnivel 4: Planetas
+    if (!loader.resources['LaTierra']) {
+      loader.add('LaTierra', '/assets/LaTierra.webp');
+    }
+    if (!loader.resources['planeta_anillo']) {
+      loader.add('planeta_anillo', '/assets/planeta_anillo.webp');
+    }
+    
+    // Nivel 1 Final / Transición: Sol
+    if (!loader.resources['sol']) {
+      loader.add('sol', '/assets/sol.webp');
+    }
     if (!loader.resources['sol2']) {
       loader.add('sol2', '/assets/sol2.webp');
+    }
+    if (!loader.resources['sol3']) {
+      loader.add('sol3', '/assets/sol3.webp');
+    }
+    
+    // Nivel 2: Galaxias
+    if (!loader.resources['via_lactea']) {
+      loader.add('via_lactea', '/assets/via_lactea.webp');
+    }
+    if (!loader.resources['andromeda']) {
+      loader.add('andromeda', '/assets/andromeda.webp');
+    }
+    
+    // Nivel 3: Exotic Galaxy
+    if (!loader.resources['exotic_galaxy']) {
+      loader.add('exotic_galaxy', '/assets/exotic_galaxy.webp');
     }
 
     // Cargar texturas de elementos
@@ -412,9 +447,15 @@ class AstroIoGame {
       this.renderer.renderPlayer(player, isMe, this.myPlayerId);
     });
 
-    // Renderizar orbes
+    // Calcular el tamaño máximo de jugador para determinar elementos disponibles
+    const maxPlayerSize = Math.max(
+      ...Object.values(this.clientGameState.players).map(p => p.size || 10),
+      10
+    );
+
+    // Renderizar orbes (pasando maxPlayerSize para progresión de niveles)
     this.clientGameState.orbs.forEach(orb => {
-      this.renderer.renderOrb(orb);
+      this.renderer.renderOrb(orb, maxPlayerSize);
     });
 
     // ========== NUEVO: Renderizar niveles personalizados activos ==========
@@ -475,11 +516,12 @@ class AstroIoGame {
   // Exact size bands that match getLevelInfo() thresholds
   getBoundsForLevel(level) {
     switch (level) {
-      case 0: return { min: 2,   max: 39  };
-      case 1: return { min: 40,  max: 79  };
-      case 2: return { min: 80,  max: 119 };
-      case 3: return { min: 120, max: 159 };
-      case 4: return { min: 160, max: 200 };
+      case 0: return { min: 2,   max: 13  }; // Nivel 1 Subnivel 1: Átomos
+      case 1: return { min: 14,  max: 26  }; // Nivel 1 Subnivel 2: Granos
+      case 2: return { min: 27,  max: 39  }; // Nivel 1 Subnivel 3: Asteroides
+      case 3: return { min: 40,  max: 119 }; // Nivel 1 Subnivel 4: Sistema Solar
+      case 4: return { min: 120, max: 159 }; // Nivel 2: Galaxias
+      case 5: return { min: 160, max: 200 }; // Nivel 3: Supercúmulo
       default: return { min: 1,  max: 200 };
     }
   }
@@ -548,18 +590,88 @@ class AstroIoGame {
   }
 
   getLevelInfo(size) {
-    if (size >= 2 && size < 40) {
-      return { level: 0, name: 'Solar System 0.1', key: 'amns-micr', range: '20-39' };
-    } else if (size >= 40 && size < 80) {
-      return { level: 1, name: 'Solar System 0.2', key: 'micr-m', range: '40-59' };
-    } else if (size >= 80 && size < 120) {
-      return { level: 2, name: 'Solar System 0.3', key: 'm-Mm', range: '60-79' };
-    } else if (size >= 120 && size < 160) {
-      return { level: 3, name: 'Galaxy', key: 'galaxy-Kpc', range: '80-99' };
-    } else if (size >= 160 && size <= 200) {
-      return { level: 4, name: 'Cluster Galaxy', key: 'cluster-galaxy-Mpc', range: '100-119' };
-    } else {
-      return { level: 5, name: 'Beyond Cluster', key: 'beyond', range: '120+' };
+    // Nivel 1 - Subnivel 1: Átomos
+    if (size >= 2 && size < 14) {
+      return { 
+        level: 0, 
+        mainLevel: 1, 
+        sublevel: 1, 
+        name: 'Nivel 1: Átomos', 
+        key: 'atomos', 
+        range: '2-13',
+        description: 'Hidrógeno, Helio, Oxígeno, Carbono, Neón'
+      };
+    } 
+    // Nivel 1 - Subnivel 2: Granos de Polvo
+    else if (size >= 14 && size < 27) {
+      return { 
+        level: 1, 
+        mainLevel: 1, 
+        sublevel: 2, 
+        name: 'Nivel 1: Granos de Polvo', 
+        key: 'granos', 
+        range: '14-26',
+        description: 'Silicatos, Carbonáceos, Hielo, Óxidos'
+      };
+    } 
+    // Nivel 1 - Subnivel 3: Asteroides
+    else if (size >= 27 && size < 40) {
+      return { 
+        level: 2, 
+        mainLevel: 1, 
+        sublevel: 3, 
+        name: 'Nivel 1: Asteroides', 
+        key: 'asteroides', 
+        range: '27-39',
+        description: 'Asteroides tipo C, S y M'
+      };
+    } 
+    // Nivel 1 - Subnivel 4: Sistema Solar
+    else if (size >= 40 && size < 120) {
+      return { 
+        level: 3, 
+        mainLevel: 1, 
+        sublevel: 4, 
+        name: 'Nivel 1: Sistema Solar', 
+        key: 'sistema-solar', 
+        range: '40-119',
+        description: 'Planetas y Estrellas'
+      };
+    } 
+    // Nivel 2: Galaxias
+    else if (size >= 120 && size < 160) {
+      return { 
+        level: 4, 
+        mainLevel: 2, 
+        sublevel: 1, 
+        name: 'Nivel 2: Galaxias', 
+        key: 'galaxias', 
+        range: '120-159',
+        description: 'Enanas Irregulares, Cúmulos, Espirales'
+      };
+    } 
+    // Nivel 3: Supercúmulo
+    else if (size >= 160 && size <= 200) {
+      return { 
+        level: 5, 
+        mainLevel: 3, 
+        sublevel: 1, 
+        name: 'Nivel 3: Supercúmulo', 
+        key: 'supercumulo', 
+        range: '160-200',
+        description: 'Elípticas, BCG'
+      };
+    } 
+    else {
+      return { 
+        level: 6, 
+        mainLevel: 3, 
+        sublevel: 2, 
+        name: 'Más Allá del Universo Observable', 
+        key: 'beyond', 
+        range: '200+',
+        description: 'El Gran Atractor'
+      };
     }
   }
 
@@ -593,13 +705,14 @@ class AstroIoGame {
 
       // --- Fallback: if the level didn't set the scale rule, set it here ---
       if (!this.ui._activeScaleRule) {
-        // nm spans per level
+        // nm spans per level - Actualizado para nueva progresión
         const nmBands = {
-          0: { nmMin: 0.1,  nmMax: 1e3,  name: 'Solar System 0.1 (Å → µm)' },
-          1: { nmMin: 1e3,  nmMax: 1e9,  name: 'Solar System 0.2 (µm → m)' },
-          2: { nmMin: 1e9,  nmMax: 1e15, name: 'Solar System 0.3 (m → Mm)' },
-          3: { nmMin: 1e15, nmMax: 1e18, name: 'Galaxy' },             // placeholder
-          4: { nmMin: 1e18, nmMax: 1e21, name: 'Cluster Galaxy' },     // placeholder
+          0: { nmMin: 0.1,    nmMax: 1e3,   name: 'Nivel 1.1: Átomos (Å → µm)' },
+          1: { nmMin: 1e3,    nmMax: 1e6,   name: 'Nivel 1.2: Granos (µm → mm)' },
+          2: { nmMin: 1e6,    nmMax: 1e9,   name: 'Nivel 1.3: Asteroides (mm → m)' },
+          3: { nmMin: 1e9,    nmMax: 1e15,  name: 'Nivel 1.4: Sistema Solar (m → Mm)' },
+          4: { nmMin: 3e19,   nmMax: 3e22,  name: 'Nivel 2: Galaxias (Kpc)' },
+          5: { nmMin: 3e22,   nmMax: 3e25,  name: 'Nivel 3: Supercúmulo (Mpc)' },
         };
         const band = nmBands[currentLevel] || nmBands[0];
         if (this.ui?.setScaleRule) {

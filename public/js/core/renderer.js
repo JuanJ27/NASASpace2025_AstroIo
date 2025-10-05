@@ -256,6 +256,41 @@ class GameRenderer {
   }
 
   /**
+   * Determinar textura del jugador según su tamaño (progresión de niveles)
+   */
+  _getPlayerTextureKey(player) {
+    const size = player.size || 10;
+    
+    // Bots tienen texturas diferentes
+    if (player.isBot) {
+      if (size < 27) return 'sol2';       // Nivel 1 Subnivel 1-2
+      if (size < 40) return 'planeta_anillo';  // Nivel 1 Subnivel 3
+      if (size < 120) return 'sol3';      // Nivel 1 Subnivel 4
+      if (size < 160) return 'andromeda'; // Nivel 2
+      return 'exotic_galaxy';             // Nivel 3
+    }
+    
+    // Jugadores humanos
+    if (size >= 2 && size < 14) {
+      return 'nebula';  // Nivel 1 Subnivel 1: Átomos
+    } else if (size >= 14 && size < 27) {
+      return 'nebula';  // Nivel 1 Subnivel 2: Granos de polvo
+    } else if (size >= 27 && size < 40) {
+      return 'roca';    // Nivel 1 Subnivel 3: Asteroides
+    } else if (size >= 40 && size < 60) {
+      return 'LaTierra'; // Nivel 1 Subnivel 4: Planeta pequeño
+    } else if (size >= 60 && size < 120) {
+      return 'sol';     // Nivel 1 Final: Estrella
+    } else if (size >= 120 && size < 160) {
+      return 'via_lactea'; // Nivel 2: Galaxia
+    } else if (size >= 160 && size <= 200) {
+      return 'exotic_galaxy'; // Nivel 3: Supercúmulo
+    }
+    
+    return 'nebula'; // Fallback
+  }
+
+  /**
    * Renderizar jugador (Nivel 1: Nebula para jugador, Sol2 para bots)
    */
   renderPlayer(player, isMe, myPlayerId) {
@@ -275,13 +310,14 @@ class GameRenderer {
       let sprite = this.playerSprites[player.id];
       let nameText = this.playerNameTexts[player.id];
 
+      // Determinar textura según tamaño (progresión de niveles)
+      const currentTextureKey = this._getPlayerTextureKey(player);
+      
       if (!sprite) {
-        // Elegir textura: 'nebula' para jugador humano, 'sol2' para bots
-        const textureKey = player.isBot ? 'sol2' : 'nebula';
-        const texture = PIXI.Loader.shared.resources[textureKey]?.texture;
+        const texture = PIXI.Loader.shared.resources[currentTextureKey]?.texture;
         
         if (!texture) {
-          console.error(`❌ Texture not found: ${textureKey}`);
+          console.error(`❌ Texture not found: ${currentTextureKey}`);
           return;
         }
 
@@ -289,8 +325,19 @@ class GameRenderer {
         sprite.anchor.set(0.5);
         this.worldContainer.addChild(sprite);
         this.playerSprites[player.id] = sprite;
+        sprite._currentTextureKey = currentTextureKey;
         
-        console.log(`✨ Created ${textureKey} sprite for player ${player.id} (${player.name})`);
+        console.log(`✨ Created ${currentTextureKey} sprite for player ${player.id} (${player.name})`);
+      } else {
+        // Cambiar textura si el jugador ha progresado de nivel
+        if (sprite._currentTextureKey !== currentTextureKey) {
+          const newTexture = PIXI.Loader.shared.resources[currentTextureKey]?.texture;
+          if (newTexture) {
+            sprite.texture = newTexture;
+            sprite._currentTextureKey = currentTextureKey;
+            console.log(`🔄 Updated texture to ${currentTextureKey} for player ${player.id} (size: ${player.size})`);
+          }
+        }
       }
 
       if (!nameText) {
@@ -358,16 +405,19 @@ class GameRenderer {
   }
 
   /**
-   * Renderizar orbe con tamaños diferenciados según tipo
+   * Renderizar orbe con tamaños diferenciados según tipo y nivel
+   * Ahora usa el visualScale del elemento para determinar el tamaño
    */
-  renderOrb(orb) {
+  renderOrb(orb, maxPlayerSize = 10) {
     try {
       if (!this.elementTexturesLoaded) {
         return;
       }
 
       let sprite = this.orbSprites[orb.id];
-      const element = window.elementForOrb(orb.id);
+      
+      // Obtener elemento según el tamaño del jugador más grande (para progresión de niveles)
+      const element = window.elementForOrb(orb.id, maxPlayerSize);
 
       if (!sprite) {
         const texture = PIXI.Loader.shared.resources[element.textureKey]?.texture;
@@ -387,18 +437,8 @@ class GameRenderer {
       sprite.x = Math.round(orb.x);
       sprite.y = Math.round(orb.y);
       
-      let sizeMultiplier = 1.0;
-      
-      // Minerales: 3x más grandes
-      if (element.key === 'Si' || element.key === 'C' || 
-          element.key === 'Ice' || element.key === 'Fe') {
-        sizeMultiplier = 3.0;
-      }
-      // Asteroides: 5x más grandes
-      else if (element.key === 'AstC' || element.key === 'AstS' || 
-               element.key === 'AstM') {
-        sizeMultiplier = 5.0;
-      }
+      // Usar el visualScale del elemento en lugar de lógica hardcoded
+      const sizeMultiplier = element.visualScale || 1.0;
       
       const baseDiameter = Math.max(10, orb.size * 2);
       const finalDiameter = baseDiameter * sizeMultiplier;
