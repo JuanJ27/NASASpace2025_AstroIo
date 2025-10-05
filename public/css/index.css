@@ -29,7 +29,13 @@ body {
 #gameCanvas {
     display: block;
     cursor: none;
-    image-rendering: crisp-edges;
+    /* Pixel art rendering - Forzar píxeles nítidos sin suavizado */
+    image-rendering: -moz-crisp-edges;    /* Firefox */
+    image-rendering: -webkit-optimize-contrast; /* Webkit (Safari) */
+    image-rendering: -o-crisp-edges;      /* Opera */
+    image-rendering: pixelated;           /* Chrome/Edge */
+    image-rendering: crisp-edges;         /* Estándar */
+    -ms-interpolation-mode: nearest-neighbor; /* IE */
 }
 
 /* Name Selection Modal */

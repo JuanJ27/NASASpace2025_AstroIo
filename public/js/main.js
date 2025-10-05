@@ -143,12 +143,26 @@ class AstroIoGame {
       return;
     }
 
-    // Cargar texturas de estrellas
+    // Cargar texturas de estrellas (Nivel 1: 4 tipos)
     if (!loader.resources['star1']) {
       loader.add('star1', '/assets/star1.webp');
     }
     if (!loader.resources['star2']) {
       loader.add('star2', '/assets/star2.webp');
+    }
+    if (!loader.resources['star_3']) {
+      loader.add('star_3', '/assets/star_3.webp');
+    }
+    if (!loader.resources['star_4']) {
+      loader.add('star_4', '/assets/star_4.webp');
+    }
+
+    // Cargar texturas de jugadores (Nivel 1: Nebula para jugador, Sol2 para bots)
+    if (!loader.resources['nebula']) {
+      loader.add('nebula', '/assets/nebula.webp');
+    }
+    if (!loader.resources['sol2']) {
+      loader.add('sol2', '/assets/sol2.webp');
     }
 
     // Cargar texturas de elementos
@@ -182,6 +196,20 @@ class AstroIoGame {
 
   onAssetsLoaded() {
     console.log('🎨 Initializing renderer...');
+    
+    // ========== CONFIGURAR MODO PIXELADO PARA PIXEL ART ==========
+    console.log('🖼️ Configurando modo pixelado para texturas (NEAREST)...');
+    PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST;
+    
+    // Asegurar que todas las texturas ya cargadas usen NEAREST
+    Object.values(PIXI.Loader.shared.resources).forEach(resource => {
+      if (resource.texture && resource.texture.baseTexture) {
+        resource.texture.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+        console.log(`  ✅ Pixel mode enabled: ${resource.name}`);
+      }
+    });
+    console.log('✅ Modo pixelado activado para todas las texturas');
+    // =============================================================
     
     this.renderer = new GameRenderer();
     this.camera = new GameCamera(this.worldWidth, this.worldHeight);

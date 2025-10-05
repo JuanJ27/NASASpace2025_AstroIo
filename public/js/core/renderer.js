@@ -5,10 +5,14 @@ class GameRenderer {
   constructor() {
     this.app = null;
     this.worldContainer = null;
-    this.starContainer = null;
+    this.starLayer1 = null;
+    this.starLayer2 = null;
+    this.starLayer3 = null;
+    this.starLayer4 = null;
     this.transitionOverlay = null;
     this.stars = [];
     this.playerGraphics = {};
+    this.playerSprites = {};
     this.playerNameTexts = {};
     this.orbSprites = {}; // ← CHANGED from orbGraphics
     this.elementTexturesLoaded = false; // ← NEW
@@ -30,24 +34,31 @@ class GameRenderer {
         width: window.innerWidth,
         height: window.innerHeight,
         backgroundColor: 0x0a0a0f,
-        antialias: true,
+        antialias: false, // ← CAMBIADO: Desactivar antialiasing para pixel art
         resolution: window.devicePixelRatio || 1,
         autoDensity: true
       });
 
       document.body.appendChild(this.app.view);
       this.app.view.id = 'gameCanvas';
+      
+      // Configurar CSS para renderizado pixelado
+      this.app.view.style.imageRendering = 'pixelated';      // Chrome/Edge
+      this.app.view.style.imageRendering = 'crisp-edges';    // Firefox
+      this.app.view.style.imageRendering = '-moz-crisp-edges'; // Firefox antiguo
+      console.log('🎮 Canvas configurado para pixel art (crisp-edges)');
 
-      // Crear contenedor de estrellas (fondo)
-      this.starContainer = new PIXI.ParticleContainer(1000, {
-        scale: true,
-        position: true,
-        alpha: true,
-        rotation: false,
-        uvs: false,
-        tint: false
-      });
-      this.app.stage.addChild(this.starContainer);
+      // Crear 4 contenedores separados para cada capa de estrellas (transparentes)
+      this.starLayer1 = new PIXI.Container();
+      this.starLayer2 = new PIXI.Container();
+      this.starLayer3 = new PIXI.Container();
+      this.starLayer4 = new PIXI.Container();
+      
+      // Añadir capas al stage (todas transparentes)
+      this.app.stage.addChild(this.starLayer1);
+      this.app.stage.addChild(this.starLayer2);
+      this.app.stage.addChild(this.starLayer3);
+      this.app.stage.addChild(this.starLayer4);
 
       // Crear contenedor del mundo
       this.worldContainer = new PIXI.Container();
@@ -89,39 +100,111 @@ class GameRenderer {
   }
 
   /**
-   * Crear fondo estrellado con parallax
+   * Crear fondo estrellado con 4 CAPAS - Nivel 1
    */
   createStarryBackground() {
     try {
-      const star1Texture = PIXI.Loader.shared.resources['star1'].texture;
-      const star2Texture = PIXI.Loader.shared.resources['star2'].texture;
-      const numStars = 300;
-      const starFieldWidth = 4000;
-      const starFieldHeight = 4000;
-
+      console.log('🔍 Verificando texturas de estrellas...');
+      
+      const star1Texture = PIXI.Loader.shared.resources['star1']?.texture;
+      const star2Texture = PIXI.Loader.shared.resources['star2']?.texture;
+      const star3Texture = PIXI.Loader.shared.resources['star_3']?.texture;
+      const star4Texture = PIXI.Loader.shared.resources['star_4']?.texture;
+      
+      if (!star1Texture || !star2Texture || !star3Texture || !star4Texture) {
+        console.error('❌ Missing star textures!');
+        return;
+      }
+      
+      const starFieldWidth = 2500;
+      const starFieldHeight = 2500;
       this.stars = [];
 
-      for (let i = 0; i < numStars; i++) {
-        const texture = i % 2 === 0 ? star1Texture : star2Texture;
-        const star = new PIXI.Sprite(texture);
-        
+      // CAPA 1: star1 (pequeñas) - 180 estrellas
+      console.log('🌟 Creando CAPA 1: star1 (pequeñas)...');
+      for (let i = 0; i < 180; i++) {
+        const star = new PIXI.Sprite(star1Texture);
         star.anchor.set(0.5);
         star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
         star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
-        
-        const scale = Math.random() * 0.5 + 0.5;
-        star.scale.set(scale);
-        star.alpha = Math.random() * 0.5 + 0.5;
-        
+        star.scale.set(0.3 + Math.random() * 0.3);
+        star.rotation = Math.random() * Math.PI * 2;
+        star.alpha = 0.5 + Math.random() * 0.5;
         star.baseAlpha = star.alpha;
         star.twinkleSpeed = Math.random() * 0.001 + 0.001;
         star.twinkleOffset = Math.random() * Math.PI * 2;
         star.baseX = star.x;
         star.baseY = star.y;
+        star.layerName = 'star1';
         
-        this.starContainer.addChild(star);
+        this.starLayer1.addChild(star);
         this.stars.push(star);
       }
+
+      // CAPA 2: star2 (pequeñas) - 180 estrellas
+      console.log('🌟 Creando CAPA 2: star2 (pequeñas)...');
+      for (let i = 0; i < 180; i++) {
+        const star = new PIXI.Sprite(star2Texture);
+        star.anchor.set(0.5);
+        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+        star.scale.set(0.3 + Math.random() * 0.3);
+        star.rotation = Math.random() * Math.PI * 2;
+        star.alpha = 0.5 + Math.random() * 0.5;
+        star.baseAlpha = star.alpha;
+        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+        star.twinkleOffset = Math.random() * Math.PI * 2;
+        star.baseX = star.x;
+        star.baseY = star.y;
+        star.layerName = 'star2';
+        
+        this.starLayer2.addChild(star);
+        this.stars.push(star);
+      }
+
+      // CAPA 3: star_3 (grandes) - 20 estrellas
+      console.log('⭐ Creando CAPA 3: star_3 (grandes)...');
+      for (let i = 0; i < 10; i++) {
+        const star = new PIXI.Sprite(star3Texture);
+        star.anchor.set(0.5);
+        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+        star.scale.set(0.8 + Math.random() * 0.7);
+        star.rotation = Math.random() * Math.PI * 2;
+        star.alpha = 0.5 + Math.random() * 0.5;
+        star.baseAlpha = star.alpha;
+        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+        star.twinkleOffset = Math.random() * Math.PI * 2;
+        star.baseX = star.x;
+        star.baseY = star.y;
+        star.layerName = 'star_3';
+        
+        this.starLayer3.addChild(star);
+        this.stars.push(star);
+      }
+
+      // CAPA 4: star_4 (grandes) - 20 estrellas
+      console.log('⭐ Creando CAPA 4: star_4 (grandes)...');
+      for (let i = 0; i < 10; i++) {
+        const star = new PIXI.Sprite(star4Texture);
+        star.anchor.set(0.5);
+        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+        star.scale.set(0.8 + Math.random() * 0.7);
+        star.rotation = Math.random() * Math.PI * 2;
+        star.alpha = 0.5 + Math.random() * 0.5;
+        star.baseAlpha = star.alpha;
+        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+        star.twinkleOffset = Math.random() * Math.PI * 2;
+        star.baseX = star.x;
+        star.baseY = star.y;
+        star.layerName = 'star_4';
+        
+        this.starLayer4.addChild(star);
+        this.stars.push(star);
+      }
+
+      console.log(`✨ Created ${this.stars.length} stars in 4 LAYERS`);
 
       // Animación de parpadeo
       this.app.ticker.add(() => {
@@ -130,8 +213,6 @@ class GameRenderer {
           star.alpha = star.baseAlpha * (0.7 + 0.3 * Math.sin(time * star.twinkleSpeed + star.twinkleOffset));
         });
       });
-
-      console.log(`✨ Created ${numStars} stars`);
     } catch (error) {
       console.error('❌ Error creating stars:', error);
     }
@@ -141,7 +222,7 @@ class GameRenderer {
    * Actualizar parallax de estrellas
    */
   updateStarParallax(cameraX, cameraY) {
-    const parallaxFactor = 0.2;
+    const parallaxFactor = 0.4;
     this.stars.forEach(star => {
       star.x = star.baseX - cameraX * parallaxFactor;
       star.y = star.baseY - cameraY * parallaxFactor;
@@ -175,13 +256,12 @@ class GameRenderer {
   }
 
   /**
-   * Renderizar jugador
+   * Renderizar jugador (Nivel 1: Nebula para jugador, Sol2 para bots)
    */
   renderPlayer(player, isMe, myPlayerId) {
     try {
       if (!player || !player.id) return;
 
-      // If server says this player is dead, purge visuals and skip drawing.
       if (player.isAlive === false) {
         if (typeof this.removePlayer === 'function') {
           this.removePlayer(player.id);
@@ -189,17 +269,28 @@ class GameRenderer {
         return;
       }
 
-      // --- your existing drawing logic below ---
-      let graphics = this.playerGraphics ? this.playerGraphics[player.id] : null;
-      let nameText = this.playerNameTexts ? this.playerNameTexts[player.id] : null;
-
-      if (!this.playerGraphics) this.playerGraphics = {};
+      if (!this.playerSprites) this.playerSprites = {};
       if (!this.playerNameTexts) this.playerNameTexts = {};
 
-      if (!graphics) {
-        graphics = new PIXI.Graphics();
-        this.worldContainer.addChild(graphics);
-        this.playerGraphics[player.id] = graphics;
+      let sprite = this.playerSprites[player.id];
+      let nameText = this.playerNameTexts[player.id];
+
+      if (!sprite) {
+        // Elegir textura: 'nebula' para jugador humano, 'sol2' para bots
+        const textureKey = player.isBot ? 'sol2' : 'nebula';
+        const texture = PIXI.Loader.shared.resources[textureKey]?.texture;
+        
+        if (!texture) {
+          console.error(`❌ Texture not found: ${textureKey}`);
+          return;
+        }
+
+        sprite = new PIXI.Sprite(texture);
+        sprite.anchor.set(0.5);
+        this.worldContainer.addChild(sprite);
+        this.playerSprites[player.id] = sprite;
+        
+        console.log(`✨ Created ${textureKey} sprite for player ${player.id} (${player.name})`);
       }
 
       if (!nameText) {
@@ -216,24 +307,25 @@ class GameRenderer {
         this.playerNameTexts[player.id] = nameText;
       }
 
+      // MERGE: Usar _effectiveVisualRadius (remoto) + posicionamiento pixel art (local)
       const vis = this._effectiveVisualRadius(player, isMe);
-      graphics.clear();
+      
+      // Posicionar en píxeles enteros para pixel art nítido
+      sprite.x = Math.round(player.x);
+      sprite.y = Math.round(player.y);
 
-      const color = isMe ? 0x00ff88 : 0x0088ff;
-      const glowColor = isMe ? 0x00ffaa : 0x00aaff;
+      const visualSize = vis * 2; // Usar vis calculado en lugar de player.size directamente
+      sprite.width = visualSize;
+      sprite.height = visualSize;
 
-      graphics.beginFill(glowColor, 0.2);
-      graphics.drawCircle(player.x, player.y, vis + 8);
-      graphics.endFill();
-
-      graphics.beginFill(color, 0.9);
-      graphics.lineStyle(3, 0xffffff, 0.6);
-      graphics.drawCircle(player.x, player.y, vis);
-      graphics.endFill();
+      if (player.targetX !== undefined && player.targetY !== undefined) {
+        const angle = Math.atan2(player.targetY - player.y, player.targetX - player.x);
+        sprite.rotation = angle;
+      }
 
       nameText.text = player.name || 'Player';
-      nameText.x = player.x;
-      nameText.y = player.y - vis - 20;
+      nameText.x = Math.round(player.x);
+      nameText.y = Math.round(player.y - visualSize / 2 - 20);
 
     } catch (e) {
       console.warn('renderPlayer error:', e);
@@ -266,19 +358,17 @@ class GameRenderer {
   }
 
   /**
-   * Renderizar orbe
+   * Renderizar orbe con tamaños diferenciados según tipo
    */
   renderOrb(orb) {
     try {
       if (!this.elementTexturesLoaded) {
-        console.warn('⚠️ Element textures not loaded yet');
         return;
       }
 
       let sprite = this.orbSprites[orb.id];
       const element = window.elementForOrb(orb.id);
 
-      // Crear sprite si no existe
       if (!sprite) {
         const texture = PIXI.Loader.shared.resources[element.textureKey]?.texture;
         
@@ -293,14 +383,28 @@ class GameRenderer {
         this.orbSprites[orb.id] = sprite;
       }
 
-      // Actualizar posición y tamaño
-      sprite.x = orb.x;
-      sprite.y = orb.y;
+      // Posicionar en píxeles enteros para pixel art nítido
+      sprite.x = Math.round(orb.x);
+      sprite.y = Math.round(orb.y);
       
-      // Tamaño visual: diámetro = 2 * radio
-      const diameter = Math.max(10, orb.size * 2);
-      sprite.width = diameter;
-      sprite.height = diameter;
+      let sizeMultiplier = 1.0;
+      
+      // Minerales: 3x más grandes
+      if (element.key === 'Si' || element.key === 'C' || 
+          element.key === 'Ice' || element.key === 'Fe') {
+        sizeMultiplier = 3.0;
+      }
+      // Asteroides: 5x más grandes
+      else if (element.key === 'AstC' || element.key === 'AstS' || 
+               element.key === 'AstM') {
+        sizeMultiplier = 5.0;
+      }
+      
+      const baseDiameter = Math.max(10, orb.size * 2);
+      const finalDiameter = baseDiameter * sizeMultiplier;
+      
+      sprite.width = finalDiameter;
+      sprite.height = finalDiameter;
 
     } catch (error) {
       console.error(`❌ Error rendering orb ${orb.id}:`, error);
@@ -312,6 +416,10 @@ class GameRenderer {
    */
   removePlayer(id) {
     try {
+      if (this.playerSprites && this.playerSprites[id]) {
+        this.playerSprites[id].destroy();
+        delete this.playerSprites[id];
+      }
       if (this.playerGraphics && this.playerGraphics[id]) {
         this.playerGraphics[id].destroy();
         delete this.playerGraphics[id];
