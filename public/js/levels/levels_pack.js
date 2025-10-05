@@ -130,16 +130,16 @@
 
 
       // swap ELEMENTS to L1 set (if provided by elements.js)
-      const L1 = global.ELEMENTS_L1 || [];
+      const elementsL1 = global.ELEMENTS_L1 || [];
       const loader = global?.PIXI?.Loader?.shared;
-      if (loader && L1.length) {
-        L1.forEach(e => { if (!loader.resources[e.textureKey]) loader.add(e.textureKey, e.src); });
+      if (loader && elementsL1.length) {
+        elementsL1.forEach(e => { if (!loader.resources[e.textureKey]) loader.add(e.textureKey, e.src); });
         loader.load(() => {
           // override getter + elements used by renderer
           global._orig_ELEMENTS = global._orig_ELEMENTS || global.ELEMENTS;
           global._orig_getTex = global._orig_getTex || global.getElementTextureSources;
-          global.ELEMENTS = L1;
-          global.getElementTextureSources = () => L1.map(e => ({ key: e.textureKey, src: e.src }));
+          global.ELEMENTS = elementsL1;
+          global.getElementTextureSources = () => elementsL1.map(e => ({ key: e.textureKey, src: e.src }));
         });
       }
       const rend = global?.game?.renderer;
@@ -309,10 +309,225 @@
     }
 
 
+  // ===== Level 3: GALAXY LEVEL (120-159) =====
+  class GalaxyLevel {
+    constructor() {
+      this.key = 'galaxy';
+      const band = bandByKey(this.key, { min: 120, max: 159, bg: 0x0a0515 });
+      this.minSize = band.min; this.maxSize = band.max; this.bg = band.bg ?? 0x0a0515;
+      this.active = false;
+      this.transitionColor = 0xff00ff; // magenta
+      this._gfx = null;
+      
+      // Trails para movimiento orbital (array de posiciones)
+      this.blackHoleTrail = [];
+      this.quasarTrail = [];
+      this.MAX_TRAIL_LENGTH = 60; // 1 segundo a 60 FPS
+    }
+
+    onEnter() {
+      this.active = true;
+
+      // Size->nm mapping (Mm..Tm escala logarítmica)
+      const bounds = (global.game && typeof global.game.getBoundsForLevel === 'function')
+        ? global.game.getBoundsForLevel(3)
+        : { min: 120, max: 159 };
+      const SZ0 = bounds.min, SZ1 = bounds.max;
+      const NM0 = 1e15, NM1 = 1e21; // 1 Mm .. 1 Tm
+      const L0 = Math.log(NM0), L1 = Math.log(NM1);
+      global.overrideSizeToNanometers = (size) => {
+        const t = clamp((size - SZ0) / Math.max(1, (SZ1 - SZ0)), 0, 1);
+        return Math.exp(L0 + t * (L1 - L0));
+      };
+
+      if (!global.currentLevelSizeBounds) global.currentLevelSizeBounds = {};
+      global.currentLevelSizeBounds.min = SZ0;
+      global.currentLevelSizeBounds.max = SZ1;
+      setCurrentNmBounds(NM0, NM1);
+
+      setScaleRuleUI({
+        name: 'Mm → Gm → Tm',
+        nmMin: NM0,
+        nmMax: NM1,
+        accent: 'linear-gradient(90deg, rgba(255,0,255,0.95), rgba(138,43,226,0.9))'
+      });
+
+      const rend = global?.game?.renderer;
+      if (rend?.app?.renderer) rend.app.renderer.backgroundColor = this.bg;
+
+      // Crear layer de hazards (orbital black hole, quasar, dark matter)
+      if (rend?.worldContainer && !this._gfx) {
+        this._gfx = new PIXI.Graphics();
+        this._gfx.zIndex = 30;
+        this._gfx.visible = false;
+        rend.worldContainer.addChild(this._gfx);
+      }
+
+      this.blackHoleTrail = [];
+      this.quasarTrail = [];
+      
+      console.log('🌌 GalaxyLevel ENTERED (size 120-159)');
+    }
+
+    onExit() {
+      this.active = false;
+      delete global.overrideSizeToNanometers;
+      delete global.overrideFormatScale;
+      delete global.currentLevelNmBounds;
+
+      if (this._gfx) {
+        this._gfx.destroy(true);
+        this._gfx = null;
+      }
+
+      this.blackHoleTrail = [];
+      this.quasarTrail = [];
+    }
+
+    update() {} // Lógica de movimiento en server
+
+    /**
+     * Añadir punto al trail con fade-out
+     */
+    addToTrail(trail, x, y) {
+      trail.push({ x, y });
+      if (trail.length > this.MAX_TRAIL_LENGTH) {
+        trail.shift();
+      }
+    }
+
+    /**
+     * Renderizar trail con gradiente de alpha
+     */
+    renderTrail(g, trail, color, alpha) {
+      if (trail.length < 2) return;
+
+      for (let i = 0; i < trail.length - 1; i++) {
+        const t = i / trail.length; // 0 (viejo) → 1 (nuevo)
+        const a = alpha * t; // fade-in desde 0 hasta alpha
+
+        g.lineStyle(3, color, a);
+        g.moveTo(trail[i].x, trail[i].y);
+        g.lineTo(trail[i + 1].x, trail[i + 1].y);
+      }
+    }
+
+    render(renderer, camera) {
+      if (!this.active || !renderer || !this._gfx) {
+        // DEBUG: check if level is active
+        if (!this.active) console.log('[GalaxyLevel] Not rendering: level not active');
+        if (!this._gfx) console.log('[GalaxyLevel] Not rendering: _gfx not created');
+        return;
+      }
+
+      const game = global.game;
+      if (!game || !game.clientGameState) {
+        console.log('[GalaxyLevel] Not rendering: no game state');
+        return;
+      }
+
+      const ghz = game.clientGameState.galaxyHazards;
+      
+      // DEBUG: Log galaxy hazards state
+      console.log('[GalaxyLevel] galaxyHazards:', ghz);
+      
+      if (!ghz || !ghz.active) {
+        console.log('[GalaxyLevel] Hazards not active, hiding graphics');
+        this._gfx.visible = false;
+        this._gfx.clear();
+        return;
+      }
+
+      console.log('[GalaxyLevel] RENDERING Galaxy Hazards!');
+      this._gfx.visible = true;
+      const g = this._gfx;
+      g.clear();
+
+      // ========== 1. SUPERMASSIVE BLACK HOLE (CON TRAIL ORBITAL) ==========
+      if (ghz.superMassiveBlackHole) {
+        const bh = ghz.superMassiveBlackHole;
+
+        // Añadir posición actual al trail
+        this.addToTrail(this.blackHoleTrail, bh.x, bh.y);
+
+        // Renderizar trail orbital (azul oscuro con fade)
+        this.renderTrail(g, this.blackHoleTrail, 0x4444ff, 0.6);
+
+        // Núcleo del agujero negro (negro con borde rojo brillante)
+        g.lineStyle(6, 0xff0000, 1.0);
+        g.beginFill(0x000000, 1.0);
+        g.drawCircle(bh.x, bh.y, bh.r);
+        g.endFill();
+
+        // Horizonte de eventos (anillo rojo pulsante)
+        const pulseAlpha = 0.3 + 0.2 * Math.sin(Date.now() * 0.005);
+        g.lineStyle(2, 0xff4444, pulseAlpha);
+        g.drawCircle(bh.x, bh.y, bh.killRadius);
+      }
+
+      // ========== 2. QUASAR (CON TRAIL CIRCULAR) ==========
+      if (ghz.quasar) {
+        const q = ghz.quasar;
+
+        // Añadir posición al trail
+        this.addToTrail(this.quasarTrail, q.x, q.y);
+
+        // Renderizar trail (cyan con fade)
+        this.renderTrail(g, this.quasarTrail, 0x00ffff, 0.5);
+
+        // Núcleo del quasar (blanco brillante)
+        g.lineStyle(3, 0xffffff, 0.9);
+        g.beginFill(0xffffff, 0.8);
+        g.drawCircle(q.x, q.y, q.r * 0.4);
+        g.endFill();
+
+        // Chorros rotatorios (jets)
+        const angle = q.rotationAngle || 0;
+        const jetLength = q.r * 2;
+
+        g.lineStyle(4, 0x00ffff, 0.7);
+        // Jet 1
+        g.moveTo(q.x, q.y);
+        g.lineTo(q.x + Math.cos(angle) * jetLength, q.y + Math.sin(angle) * jetLength);
+        // Jet 2 (opuesto)
+        g.moveTo(q.x, q.y);
+        g.lineTo(q.x - Math.cos(angle) * jetLength, q.y - Math.sin(angle) * jetLength);
+
+        // Anillo de acreción (cyan transparente)
+        g.lineStyle(2, 0x00ffff, 0.5);
+        g.drawCircle(q.x, q.y, q.r);
+      }
+
+      // ========== 3. DARK MATTER CLOUDS (NIEBLA PÚRPURA) ==========
+      if (Array.isArray(ghz.darkMatter) && ghz.darkMatter.length) {
+        for (const cloud of ghz.darkMatter) {
+          // Nube semitransparente con borde difuso
+          g.lineStyle(1, 0x8800ff, 0.3);
+          g.beginFill(0x440088, 0.2);
+          g.drawCircle(cloud.x, cloud.y, cloud.r);
+          g.endFill();
+
+          // Núcleo más denso
+          g.beginFill(0x8800ff, 0.4);
+          g.drawCircle(cloud.x, cloud.y, cloud.r * 0.5);
+          g.endFill();
+        }
+      }
+    }
+  }
+
+
   // export instances for main.js
   global.FirstSolarLevel  = new FirstSolarLevel();
   global.SecondSolarLevel = new SecondSolarLevel();
   global.ThirdSolarLevel  = new ThirdSolarLevel();
+  global.GalaxyLevel = new GalaxyLevel();
 
   log('✅ levels_pack.js loaded');
+  log('📦 Exported levels:', {
+    FirstSolarLevel: !!global.FirstSolarLevel,
+    SecondSolarLevel: !!global.SecondSolarLevel,
+    ThirdSolarLevel: !!global.ThirdSolarLevel,
+    GalaxyLevel: !!global.GalaxyLevel
+  });
 })(window);

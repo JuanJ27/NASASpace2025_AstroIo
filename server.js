@@ -24,6 +24,15 @@ const {
   getHazardsSnapshot
 } = require('./server/core/hazards');
 
+// Galaxy Hazards (Level 3: Galaxias 120-159)
+const {
+  enableGalaxyHazards,
+  disableGalaxyHazards,
+  areGalaxyHazardsActive,
+  updateGalaxyHazards,
+  getGalaxyHazardsSnapshot
+} = require('./server/core/hazardsGalaxy');
+
 // Pull hazard band from shared/levelsConfig
 const { getLevelForSize } = require('./shared/levelsConfig');
 
@@ -41,6 +50,9 @@ function getHazardBandFromConfig() {
 }
 
 const HAZARD_RANGE = getHazardBandFromConfig();
+
+// Galaxy Level hazard range (size 120-159)
+const GALAXY_HAZARD_RANGE = { min: 120, max: 159 };
 
 
 // (optional) shared band check if you prefer to lazy-init when someone hits L3
@@ -179,13 +191,35 @@ function gameLoop() {
     // Tick hazards (does nothing if inactive)
     updateHazards(dt, io);
 
+    // ── LAZY Galaxy hazards activation (Level 3: 120-159):
+    let anyInGalaxyBand = false;
+    for (const p of Object.values(gameState.players)) {
+      if (!p || !p.isAlive) continue;
+      if (p.size >= GALAXY_HAZARD_RANGE.min && p.size <= GALAXY_HAZARD_RANGE.max) {
+        anyInGalaxyBand = true;
+        break;
+      }
+    }
+
+    if (anyInGalaxyBand && !areGalaxyHazardsActive()) {
+      enableGalaxyHazards();
+      console.log('🌌 Galaxy Hazards ENABLED (player in Galaxy band 120-159).');
+    } else if (!anyInGalaxyBand && areGalaxyHazardsActive()) {
+      disableGalaxyHazards();
+      console.log('🌌 Galaxy Hazards DISABLED (no players in Galaxy band).');
+    }
+
+    // Tick galaxy hazards (orbital movement + physics)
+    updateGalaxyHazards(dt, io);
+
     // Build delta
     const delta = {
       players: {},
       orbs: [],
       removedOrbs: [],
       removedPlayers: [],
-      hazards: getHazardsSnapshot() // { blackHole, whiteHole, asteroids }
+      hazards: getHazardsSnapshot(), // { blackHole, whiteHole, asteroids }
+      galaxyHazards: getGalaxyHazardsSnapshot() // { active, superMassiveBlackHole, quasar, darkMatter }
     };
 
     // Changed/new players
