@@ -18,7 +18,8 @@ class GameCamera {
       // Zoom dinámico: pequeños = zoom in, grandes = zoom out
       const desiredScale = this.clamp(1.4 - (player.size / 250), 0.6, 1.4);
       this.viewScale = this.lerp(this.viewScale, desiredScale, 0.15);
-      worldContainer.scale.set(this.viewScale, this.viewScale);
+      const finalScale = (this._transitionScale != null) ? this._transitionScale : this.viewScale;
+      worldContainer.scale.set(finalScale, finalScale);
 
       // Calcular viewport con escala
       const viewW = screenWidth / this.viewScale;
@@ -35,6 +36,11 @@ class GameCamera {
     } catch (error) {
       console.error('❌ Error updating camera:', error);
     }
+  }
+
+  // Optional external override for transient zoom animations.
+  setTransitionScale(scaleOrNull) {
+    this._transitionScale = (typeof scaleOrNull === 'number') ? scaleOrNull : null;
   }
 
   /**
