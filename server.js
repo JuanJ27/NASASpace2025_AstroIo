@@ -51,7 +51,8 @@ app.get('/', (req, res) => {
       'juan':   'juanjo_dev.html',   // ← integrado del nuevo server
       'juanjo': 'juanjo_dev.html',   // ← compat con tu server anterior
       'tomas':  'tomas_dev.html',
-      'darwin': 'darwin_dev.html'
+      'darwin': 'darwin_dev.html',
+      'profe': 'profe_dev.html'
     };
 
     const key = (USER || '').toLowerCase();
