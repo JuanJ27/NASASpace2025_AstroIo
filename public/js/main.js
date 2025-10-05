@@ -226,11 +226,36 @@ class AstroIoGame {
     this.socket.setName(this.myPlayerName);
   }
 
+  // setupMouseInput() {
+  //   document.addEventListener('mousemove', (event) => {
+  //     if (this.socket && this.isGameActive && this.myPlayerId && this.camera) {
+  //       const worldPos = this.camera.screenToWorld(event.clientX, event.clientY);
+  //       this.socket.sendMove(worldPos.x, worldPos.y);
+  //     }
+  //   });
+  // }
   setupMouseInput() {
+    // Send at most ~60 fps (like a game loop), not per DOM event.
+    let pending = null;
+    let sending = false;
+
+    const sendLoop = () => {
+      if (!sending) return;
+      if (pending && this.socket && this.isGameActive && this.myPlayerId && this.camera) {
+        const { x, y } = pending;
+        this.socket.sendMove(x, y);
+        pending = null; // sent the latest
+      }
+      requestAnimationFrame(sendLoop);
+    };
+
     document.addEventListener('mousemove', (event) => {
-      if (this.socket && this.isGameActive && this.myPlayerId && this.camera) {
-        const worldPos = this.camera.screenToWorld(event.clientX, event.clientY);
-        this.socket.sendMove(worldPos.x, worldPos.y);
+      if (!this.camera) return;
+      const worldPos = this.camera.screenToWorld(event.clientX, event.clientY);
+      pending = worldPos;
+      if (!sending) {
+        sending = true;
+        requestAnimationFrame(sendLoop);
       }
     });
   }
@@ -244,25 +269,28 @@ class AstroIoGame {
   }
 
   setupTouchInput() {
-    let lastTouchTime = 0;
-    const TOUCH_THROTTLE = 16;
+    let pending = null;
+    let sending = false;
+
+    const sendLoop = () => {
+      if (!sending) return;
+      if (pending && this.socket && this.isGameActive && this.myPlayerId && this.camera) {
+        const { x, y } = pending;
+        this.socket.sendMove(x, y);
+        pending = null;
+      }
+      requestAnimationFrame(sendLoop);
+    };
 
     document.addEventListener('touchmove', (event) => {
-      if (!this.socket || !this.isGameActive || !this.myPlayerId || !this.camera) {
-        return;
+      if (!this.camera) return;
+      const t = event.touches[0];
+      pending = this.camera.screenToWorld(t.clientX, t.clientY);
+      if (!sending) {
+        sending = true;
+        requestAnimationFrame(sendLoop);
       }
-
-      const now = performance.now();
-      if (now - lastTouchTime < TOUCH_THROTTLE) {
-        return;
-      }
-      lastTouchTime = now;
-
-      const touch = event.touches[0];
-      const worldPos = this.camera.screenToWorld(touch.clientX, touch.clientY);
-      this.socket.sendMove(worldPos.x, worldPos.y);
-      
-      event.preventDefault();
+      event.preventDefault(); // avoid scroll
     }, { passive: false });
   }
 
@@ -380,15 +408,15 @@ class AstroIoGame {
    * ============================================
    */
   getLevelInfo(size) {
-    if (size >= 20 && size < 40) {
+    if (size >= 20 && size < 200) {
       return { level: 0, name: 'Solar System 0.1', key: 'amns-micr', range: '20-39' };
-    } else if (size >= 40 && size < 60) {
+    } else if (size >= 200 && size < 400) {
       return { level: 1, name: 'Solar System 0.2', key: 'micr-m', range: '40-59' };
-    } else if (size >= 60 && size < 80) {
+    } else if (size >= 400 && size < 600) {
       return { level: 2, name: 'Solar System 0.3', key: 'm-Mm', range: '60-79' };
-    } else if (size >= 80 && size < 100) {
+    } else if (size >= 600 && size < 800) {
       return { level: 3, name: 'Galaxy', key: 'galaxy-Kpc', range: '80-99' };
-    } else if (size >= 100 && size <= 119) {
+    } else if (size >= 800 && size <= 1000) {
       return { level: 4, name: 'Cluster Galaxy', key: 'cluster-galaxy-Mpc', range: '100-119' };
     } else {
       return { level: 5, name: 'Beyond Cluster', key: 'beyond', range: '120+' };

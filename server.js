@@ -36,19 +36,27 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const USER = process.env.USER || '';
 
-// Rutas condicionales
+/**
+ * Rutas condicionales
+ * - Mantiene la lógica original
+ * - Integra soporte para 'juan' o 'juanjo'
+ */
 app.get('/', (req, res) => {
   if (NODE_ENV == 'development') {
     console.log("••••• Entrando en modo desarrollo ••••" + USER);
+
+    // Acepta USER= 'juan' o 'juanjo' y usa el mismo archivo dev
     const devFiles = {
       'ginkgo': 'ginkgo_dev.html',
-      'juan': 'juanjo_dev.html',
-      'tomas': 'tomas_dev.html',
+      'juan':   'juanjo_dev.html',   // ← integrado del nuevo server
+      'juanjo': 'juanjo_dev.html',   // ← compat con tu server anterior
+      'tomas':  'tomas_dev.html',
       'darwin': 'darwin_dev.html'
     };
-    
-    const devFile = devFiles[USER.toLowerCase()] || 'index.html';
-    console.log("------>"+USER);
+
+    const key = (USER || '').toLowerCase();
+    const devFile = devFiles[key] || 'index.html';
+    console.log("------>" + USER);
     const filePath = path.join(__dirname, 'public', 'worlds', devFile);
     console.log(`🔧 DEV MODE: ${devFile} for ${USER}`);
     res.sendFile(filePath);
@@ -59,22 +67,16 @@ app.get('/', (req, res) => {
   }
 });
 
-// Servir estáticos // lo agrego darwin
+// Servir estáticos (una sola vez)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Servir estáticos
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ✨ AGREGAR ESTA LÍNEA AQUÍ (después de la línea anterior)
+// NUEVO: servir assets compartidos en /shared (integrado del nuevo server)
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
-// Socket.IO
-io.on('connection', (socket) => {
-  handleConnection(io, socket);
-  handleMovement(socket);
-}); // lo agrego darwin
-
-// Socket.IO
+/**
+ * Socket.IO
+ * - Un solo bloque de connection (evita doble registro de listeners)
+ */
 io.on('connection', (socket) => {
   handleConnection(io, socket);
   handleMovement(socket);
@@ -94,7 +96,7 @@ let fpsUpdateTime = Date.now();
  */
 function gameLoop() {
   const start = Date.now();
-  
+
   try {
     const dt = start - lastLoopTime;
     lastLoopTime = start;
@@ -109,10 +111,10 @@ function gameLoop() {
     // Actualizar jugadores humanos
     Object.values(gameState.players).forEach(player => {
       if (player.isBot) return;
-      
+
       updatePlayerPosition(player, dt);
       checkOrbCollisions(player);
-      
+
       // Actualizar nivel
       const level = getPlayerLevel(player.size);
       player.levelKey = level.key;
@@ -122,7 +124,7 @@ function gameLoop() {
     // Actualizar bots
     updateBots(dt);
 
-    // Colisiones jugador vs jugador (PASAR io AQUÍ)
+    // Colisiones jugador vs jugador
     const removedPlayers = checkPlayerCollisions(io);
 
     // Construir delta (solo cambios)
@@ -136,14 +138,16 @@ function gameLoop() {
     // Jugadores cambiados/nuevos
     for (const [id, player] of Object.entries(gameState.players)) {
       const prev = lastState.players[id];
-      
-      if (!prev ||
-          prev.x !== player.x || 
-          prev.y !== player.y ||
-          prev.size !== player.size || 
-          prev.name !== player.name ||
-          prev.levelKey !== player.levelKey ||
-          prev.isAlive !== player.isAlive) {
+
+      if (
+        !prev ||
+        prev.x !== player.x ||
+        prev.y !== player.y ||
+        prev.size !== player.size ||
+        prev.name !== player.name ||
+        prev.levelKey !== player.levelKey ||
+        prev.isAlive !== player.isAlive
+      ) {
         delta.players[id] = { ...player };
       }
     }
@@ -155,17 +159,16 @@ function gameLoop() {
       }
     }
 
-    // Orbes añadidos
+    // Orbes añadidos / removidos
     const lastOrbMap = new Map(lastState.orbs.map(o => [o.id, o]));
     const currOrbMap = new Map(gameState.orbs.map(o => [o.id, o]));
-    
+
     for (const orb of gameState.orbs) {
       if (!lastOrbMap.get(orb.id)) {
         delta.orbs.push({ ...orb });
       }
     }
 
-    // Orbes removidos
     for (const orb of lastState.orbs) {
       if (!currOrbMap.has(orb.id)) {
         delta.removedOrbs.push(orb.id);
@@ -176,10 +179,12 @@ function gameLoop() {
     delta.removedPlayers.push(...removedPlayers);
 
     // Enviar delta si hay cambios
-    if (Object.keys(delta.players).length || 
-        delta.orbs.length || 
-        delta.removedOrbs.length || 
-        delta.removedPlayers.length) {
+    if (
+      Object.keys(delta.players).length ||
+      delta.orbs.length ||
+      delta.removedOrbs.length ||
+      delta.removedPlayers.length
+    ) {
       io.emit('gameState', delta);
     }
 
@@ -217,11 +222,11 @@ server.listen(PORT, () => {
   console.log(`🚀 AstroIo Server Started`);
   console.log(`📍 URL: http://localhost:${PORT}`);
   console.log(`🌍 Environment: ${NODE_ENV}`);
-  
+
   if (NODE_ENV === 'development') {
     console.log(`👤 Developer: ${USER}`);
   }
-  
+
   console.log(`🎮 Max Players: ${GAME_CONFIG.MAX_PLAYERS}`);
   console.log(`🌎 World Size: ${GAME_CONFIG.WORLD_WIDTH}x${GAME_CONFIG.WORLD_HEIGHT}`);
   console.log(`⚫ Orbs: ${GAME_CONFIG.NUM_ORBS}`);

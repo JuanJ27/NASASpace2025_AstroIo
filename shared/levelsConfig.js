@@ -9,40 +9,40 @@
 
 const LEVELS_CONFIG = [
   { 
-    min: 20, 
-    max: 39, 
+    min: 0,//20, 
+    max: 200,//39, 
     key: 'amns-micr', 
     name: 'Solar System 0.1',
     clientLevel: 0,
     description: 'Escala atómica a microscópica'
   },
   { 
-    min: 40, 
-    max: 59, 
+    min: 200, 
+    max: 400, 
     key: 'micr-m', 
     name: 'Solar System 0.2',
     clientLevel: 1,
     description: 'Escala microscópica a milimétrica'
   },
   { 
-    min: 60, 
-    max: 79, 
+    min: 400, 
+    max: 600, 
     key: 'm-Mm', 
     name: 'Solar System 0.3',
     clientLevel: 2,
     description: 'Escala milimétrica a megamétrica'
   },
   { 
-    min: 80, 
-    max: 99, 
+    min: 600, 
+    max: 800, 
     key: 'galaxy-Kpc', 
     name: 'Galaxy 0.1',
     clientLevel: 3,
     description: 'Escala galáctica (Kiloparsecs)'
   },
   { 
-    min: 100, 
-    max: 119, 
+    min: 800, 
+    max: 1000, 
     key: 'cluster-galaxy-Mpc', 
     name: 'Cluster Galaxy',
     clientLevel: 4,
