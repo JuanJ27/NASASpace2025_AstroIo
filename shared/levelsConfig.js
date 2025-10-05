@@ -1,59 +1,5 @@
 /**
  * ============================================
- * CONFIGURACIÓN CENTRALIZADA DE NIVELES
- * Compartida entre servidor y cliente
- * 
- * ⚠️ IMPORTANTE: Este archivo se usa tanto en Node.js como en el navegador
- * ============================================
- */
-
-// const LEVELS_CONFIG = [
-//   { 
-//     min: 0,//20, 
-//     max: 200,//39, 
-//     key: 'amns-micr', 
-//     name: 'Solar System 0.1',
-//     clientLevel: 0,
-//     description: 'Escala atómica a microscópica'
-//   },
-//   { 
-//     min: 200, 
-//     max: 400, 
-//     key: 'micr-m', 
-//     name: 'Solar System 0.2',
-//     clientLevel: 1,
-//     description: 'Escala microscópica a milimétrica'
-//   },
-//   { 
-//     min: 400, 
-//     max: 600, 
-//     key: 'm-Mm', 
-//     name: 'Solar System 0.3',
-//     clientLevel: 2,
-//     description: 'Escala milimétrica a megamétrica'
-//   },
-//   { 
-//     min: 600, 
-//     max: 800, 
-//     key: 'galaxy-Kpc', 
-//     name: 'Galaxy 0.1',
-//     clientLevel: 3,
-//     description: 'Escala galáctica (Kiloparsecs)'
-//   },
-//   { 
-//     min: 800, 
-//     max: 1000, 
-//     key: 'cluster-galaxy-Mpc', 
-//     name: 'Cluster Galaxy',
-//     clientLevel: 4,
-//     description: 'Cúmulo de galaxias (Megaparsecs)',
-//     customLevel: 'DarwinClusterLevel', // ← Tu nivel personalizado
-//     backgroundColor: 0x1a0033 // Púrpura oscuro
-//   }
-// ];
-
-/**
- * ============================================
  * CONFIGURACIÓN DE NIVELES CON SUBNIVELES
  * Nivel 1: 3 subniveles (Átomos, Granos, Asteroides)
  * Nivel 2: Galaxias (sin subniveles)

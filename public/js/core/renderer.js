@@ -5,17 +5,28 @@ class GameRenderer {
   constructor() {
     this.app = null;
     this.worldContainer = null;
+    
+    // Fondos por nivel
+    this.backgroundLevel1 = null;
+    this.backgroundLevel2 = null;
+    this.backgroundLevel3 = null;
+    this.currentLevel = 1;
+    
     this.starLayer1 = null;
     this.starLayer2 = null;
     this.starLayer3 = null;
     this.starLayer4 = null;
     this.transitionOverlay = null;
     this.stars = [];
+    this.backgroundObjects = [];
     this.playerGraphics = {};
     this.playerSprites = {};
     this.playerNameTexts = {};
     this.orbSprites = {}; // ← CHANGED from orbGraphics
     this.elementTexturesLoaded = false; // ← NEW
+
+    // Hazards
+    this.hazardsGfx = null; // ← NEW: capa para hoyos/asteroides
 
     // Minimap bits
     this.minimapCanvas = null;
@@ -48,6 +59,19 @@ class GameRenderer {
       this.app.view.style.imageRendering = '-moz-crisp-edges'; // Firefox antiguo
       console.log('🎮 Canvas configurado para pixel art (crisp-edges)');
 
+      // Crear contenedores de fondo para cada nivel
+      this.backgroundLevel1 = new PIXI.Container();
+      this.backgroundLevel1.alpha = 1.0; // Nivel 1 visible por defecto
+      this.app.stage.addChild(this.backgroundLevel1);
+      
+      this.backgroundLevel2 = new PIXI.Container();
+      this.backgroundLevel2.alpha = 0.0; // Nivel 2 invisible inicialmente
+      this.app.stage.addChild(this.backgroundLevel2);
+      
+      this.backgroundLevel3 = new PIXI.Container();
+      this.backgroundLevel3.alpha = 0.0; // Nivel 3 invisible inicialmente
+      this.app.stage.addChild(this.backgroundLevel3);
+
       // Crear 4 contenedores separados para cada capa de estrellas (transparentes)
       this.starLayer1 = new PIXI.Container();
       this.starLayer2 = new PIXI.Container();
@@ -55,14 +79,21 @@ class GameRenderer {
       this.starLayer4 = new PIXI.Container();
       
       // Añadir capas al stage (todas transparentes)
-      this.app.stage.addChild(this.starLayer1);
-      this.app.stage.addChild(this.starLayer2);
-      this.app.stage.addChild(this.starLayer3);
-      this.app.stage.addChild(this.starLayer4);
+      this.backgroundLevel1.addChild(this.starLayer1);
+      this.backgroundLevel1.addChild(this.starLayer2);
+      this.backgroundLevel1.addChild(this.starLayer3);
+      this.backgroundLevel1.addChild(this.starLayer4);
 
       // Crear contenedor del mundo
       this.worldContainer = new PIXI.Container();
+      this.worldContainer.sortableChildren = true;
       this.app.stage.addChild(this.worldContainer);
+
+      // NEW: capa de hazards (entre sprites y nombres)
+      this.hazardsGfx = new PIXI.Graphics();
+      this.hazardsGfx.zIndex = 30;     // players ~20, hazards 30, names ~40
+      this.hazardsGfx.visible = false; // se controla por frame
+      this.worldContainer.addChild(this.hazardsGfx);
 
       // Overlay de transición
       this.transitionOverlay = new PIXI.Graphics();
@@ -100,111 +131,27 @@ class GameRenderer {
   }
 
   /**
-   * Crear fondo estrellado con 4 CAPAS - Nivel 1
+   * Crear fondos para los 3 niveles
    */
   createStarryBackground() {
     try {
-      console.log('🔍 Verificando texturas de estrellas...');
-      
-      const star1Texture = PIXI.Loader.shared.resources['star1']?.texture;
-      const star2Texture = PIXI.Loader.shared.resources['star2']?.texture;
-      const star3Texture = PIXI.Loader.shared.resources['star_3']?.texture;
-      const star4Texture = PIXI.Loader.shared.resources['star_4']?.texture;
-      
-      if (!star1Texture || !star2Texture || !star3Texture || !star4Texture) {
-        console.error('❌ Missing star textures!');
-        return;
-      }
+      console.log('🔍 Creando fondos para 3 niveles...');
       
       const starFieldWidth = 2500;
       const starFieldHeight = 2500;
       this.stars = [];
-
-      // CAPA 1: star1 (pequeñas) - 180 estrellas
-      console.log('🌟 Creando CAPA 1: star1 (pequeñas)...');
-      for (let i = 0; i < 180; i++) {
-        const star = new PIXI.Sprite(star1Texture);
-        star.anchor.set(0.5);
-        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
-        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
-        star.scale.set(0.3 + Math.random() * 0.3);
-        star.rotation = Math.random() * Math.PI * 2;
-        star.alpha = 0.5 + Math.random() * 0.5;
-        star.baseAlpha = star.alpha;
-        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
-        star.twinkleOffset = Math.random() * Math.PI * 2;
-        star.baseX = star.x;
-        star.baseY = star.y;
-        star.layerName = 'star1';
-        
-        this.starLayer1.addChild(star);
-        this.stars.push(star);
-      }
-
-      // CAPA 2: star2 (pequeñas) - 180 estrellas
-      console.log('🌟 Creando CAPA 2: star2 (pequeñas)...');
-      for (let i = 0; i < 180; i++) {
-        const star = new PIXI.Sprite(star2Texture);
-        star.anchor.set(0.5);
-        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
-        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
-        star.scale.set(0.3 + Math.random() * 0.3);
-        star.rotation = Math.random() * Math.PI * 2;
-        star.alpha = 0.5 + Math.random() * 0.5;
-        star.baseAlpha = star.alpha;
-        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
-        star.twinkleOffset = Math.random() * Math.PI * 2;
-        star.baseX = star.x;
-        star.baseY = star.y;
-        star.layerName = 'star2';
-        
-        this.starLayer2.addChild(star);
-        this.stars.push(star);
-      }
-
-      // CAPA 3: star_3 (grandes) - 20 estrellas
-      console.log('⭐ Creando CAPA 3: star_3 (grandes)...');
-      for (let i = 0; i < 10; i++) {
-        const star = new PIXI.Sprite(star3Texture);
-        star.anchor.set(0.5);
-        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
-        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
-        star.scale.set(0.8 + Math.random() * 0.7);
-        star.rotation = Math.random() * Math.PI * 2;
-        star.alpha = 0.5 + Math.random() * 0.5;
-        star.baseAlpha = star.alpha;
-        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
-        star.twinkleOffset = Math.random() * Math.PI * 2;
-        star.baseX = star.x;
-        star.baseY = star.y;
-        star.layerName = 'star_3';
-        
-        this.starLayer3.addChild(star);
-        this.stars.push(star);
-      }
-
-      // CAPA 4: star_4 (grandes) - 20 estrellas
-      console.log('⭐ Creando CAPA 4: star_4 (grandes)...');
-      for (let i = 0; i < 10; i++) {
-        const star = new PIXI.Sprite(star4Texture);
-        star.anchor.set(0.5);
-        star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
-        star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
-        star.scale.set(0.8 + Math.random() * 0.7);
-        star.rotation = Math.random() * Math.PI * 2;
-        star.alpha = 0.5 + Math.random() * 0.5;
-        star.baseAlpha = star.alpha;
-        star.twinkleSpeed = Math.random() * 0.001 + 0.001;
-        star.twinkleOffset = Math.random() * Math.PI * 2;
-        star.baseX = star.x;
-        star.baseY = star.y;
-        star.layerName = 'star_4';
-        
-        this.starLayer4.addChild(star);
-        this.stars.push(star);
-      }
-
-      console.log(`✨ Created ${this.stars.length} stars in 4 LAYERS`);
+      this.backgroundObjects = [];
+      
+      // NIVEL 1: Estrellas + Meteoros
+      this.createLevel1Background(starFieldWidth, starFieldHeight);
+      
+      // NIVEL 2: Galaxias + Agujeros Negros
+      this.createLevel2Background(starFieldWidth, starFieldHeight);
+      
+      // NIVEL 3: Imagen final sutil
+      this.createLevel3Background(starFieldWidth, starFieldHeight);
+      
+      console.log(`✨ Created ${this.stars.length} stars + ${this.backgroundObjects.length} background objects`);
 
       // Animación de parpadeo
       this.app.ticker.add(() => {
@@ -214,19 +161,418 @@ class GameRenderer {
         });
       });
     } catch (error) {
-      console.error('❌ Error creating stars:', error);
+      console.error('❌ Error creating backgrounds:', error);
     }
   }
 
   /**
-   * Actualizar parallax de estrellas
+   * NIVEL 1: Estrellas + Meteoros
+   */
+  createLevel1Background(starFieldWidth, starFieldHeight) {
+    console.log('🌟 Creando fondo NIVEL 1...');
+    
+    const star1Texture = PIXI.Loader.shared.resources['star1']?.texture;
+    const star2Texture = PIXI.Loader.shared.resources['star2']?.texture;
+    const star3Texture = PIXI.Loader.shared.resources['star_3']?.texture;
+    const star4Texture = PIXI.Loader.shared.resources['star_4']?.texture;
+    
+    if (!star1Texture || !star2Texture || !star3Texture || !star4Texture) {
+      console.error('❌ Missing star textures!');
+      return;
+    }
+
+    // CAPA 1: star1 (pequeñas) - 180 estrellas
+    for (let i = 0; i < 180; i++) {
+      const star = new PIXI.Sprite(star1Texture);
+      star.anchor.set(0.5);
+      star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      star.scale.set(0.3 + Math.random() * 0.3);
+      star.rotation = Math.random() * Math.PI * 2;
+      star.alpha = Math.min(0.8, 0.5 + Math.random() * 0.3); // Máximo 0.8
+      star.baseAlpha = star.alpha;
+      star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+      star.twinkleOffset = Math.random() * Math.PI * 2;
+      star.baseX = star.x;
+      star.baseY = star.y;
+      star.layerName = 'star1';
+      star.level = 1;
+      
+      this.starLayer1.addChild(star);
+      this.stars.push(star);
+    }
+
+    // CAPA 2: star2 (pequeñas) - 180 estrellas
+    for (let i = 0; i < 180; i++) {
+      const star = new PIXI.Sprite(star2Texture);
+      star.anchor.set(0.5);
+      star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      star.scale.set(0.3 + Math.random() * 0.3);
+      star.rotation = Math.random() * Math.PI * 2;
+      star.alpha = Math.min(0.8, 0.5 + Math.random() * 0.3); // Máximo 0.8
+      star.baseAlpha = star.alpha;
+      star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+      star.twinkleOffset = Math.random() * Math.PI * 2;
+      star.baseX = star.x;
+      star.baseY = star.y;
+      star.layerName = 'star2';
+      star.level = 1;
+      
+      this.starLayer2.addChild(star);
+      this.stars.push(star);
+    }
+
+    // CAPA 3: star_3 (grandes) - 10 estrellas
+    for (let i = 0; i < 10; i++) {
+      const star = new PIXI.Sprite(star3Texture);
+      star.anchor.set(0.5);
+      star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      star.scale.set(0.8 + Math.random() * 0.7);
+      star.rotation = Math.random() * Math.PI * 2;
+      star.alpha = Math.min(0.8, 0.5 + Math.random() * 0.3); // Máximo 0.8
+      star.baseAlpha = star.alpha;
+      star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+      star.twinkleOffset = Math.random() * Math.PI * 2;
+      star.baseX = star.x;
+      star.baseY = star.y;
+      star.layerName = 'star_3';
+      star.level = 1;
+      
+      this.starLayer3.addChild(star);
+      this.stars.push(star);
+    }
+
+    // CAPA 4: star_4 (grandes) - 10 estrellas
+    for (let i = 0; i < 10; i++) {
+      const star = new PIXI.Sprite(star4Texture);
+      star.anchor.set(0.5);
+      star.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      star.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      star.scale.set(0.8 + Math.random() * 0.7);
+      star.rotation = Math.random() * Math.PI * 2;
+      star.alpha = Math.min(0.8, 0.5 + Math.random() * 0.3); // Máximo 0.8
+      star.baseAlpha = star.alpha;
+      star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+      star.twinkleOffset = Math.random() * Math.PI * 2;
+      star.baseX = star.x;
+      star.baseY = star.y;
+      star.layerName = 'star_4';
+      star.level = 1;
+      
+      this.starLayer4.addChild(star);
+      this.stars.push(star);
+    }
+
+    // Agregar Meteoros (un poco más para enriquecer el fondo)
+    const meteorTextures = [
+      PIXI.Loader.shared.resources['meteoro1']?.texture,
+      PIXI.Loader.shared.resources['meteoro2']?.texture,
+      PIXI.Loader.shared.resources['meteoro_azul']?.texture
+    ].filter(t => t);
+
+    for (let i = 0; i < 15; i++) { // Aumentado de 8 a 15 meteoros
+      const texture = meteorTextures[Math.floor(Math.random() * meteorTextures.length)];
+      if (!texture) continue;
+      
+      const meteor = new PIXI.Sprite(texture);
+      meteor.anchor.set(0.5);
+      meteor.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      meteor.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      meteor.scale.set(0.2 + Math.random() * 0.5); // Pequeños y medianos (aumentada variedad)
+      meteor.rotation = Math.random() * Math.PI * 2;
+      meteor.alpha = Math.min(0.8, 0.3 + Math.random() * 0.3); // Máximo 0.8, más tenues
+      meteor.baseAlpha = meteor.alpha;
+      meteor.baseX = meteor.x;
+      meteor.baseY = meteor.y;
+      meteor.level = 1;
+      
+      this.starLayer4.addChild(meteor);
+      this.backgroundObjects.push(meteor);
+    }
+  }
+
+  /**
+   * NIVEL 2: Galaxias + Agujeros Negros
+   */
+  createLevel2Background(starFieldWidth, starFieldHeight) {
+    console.log('🌌 Creando fondo NIVEL 2...');
+    
+    // Galaxias de fondo (más pequeñas y tenues para distinguir de la comida)
+    const backgroundGalaxyTextures = [
+      PIXI.Loader.shared.resources['galaxia_04']?.texture,
+      PIXI.Loader.shared.resources['galaxia_05']?.texture,
+      PIXI.Loader.shared.resources['galaxia_06']?.texture,
+      PIXI.Loader.shared.resources['brazos_azules']?.texture,
+      PIXI.Loader.shared.resources['enana_irregular']?.texture,
+      PIXI.Loader.shared.resources['pequeña_espiral']?.texture,
+      PIXI.Loader.shared.resources['ojo_cangrejo']?.texture,
+      PIXI.Loader.shared.resources['cumulo_glubular']?.texture
+    ].filter(t => t);
+
+    for (let i = 0; i < 25; i++) { // Aumentado de 18 a 25 para llenar más el espacio
+      const texture = backgroundGalaxyTextures[Math.floor(Math.random() * backgroundGalaxyTextures.length)];
+      if (!texture) continue;
+      
+      const galaxy = new PIXI.Sprite(texture);
+      galaxy.anchor.set(0.5);
+      galaxy.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      galaxy.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      galaxy.scale.set(0.25 + Math.random() * 0.4); // Más pequeñas para distinguir
+      galaxy.rotation = Math.random() * Math.PI * 2;
+      galaxy.alpha = 0; // Invisible inicialmente
+      galaxy.baseAlpha = Math.min(0.6, 0.3 + Math.random() * 0.25); // Máximo 0.6 (más tenues)
+      galaxy.baseX = galaxy.x;
+      galaxy.baseY = galaxy.y;
+      galaxy.level = 2;
+      galaxy.isBackground = true; // Marcar como fondo
+      
+      this.backgroundLevel2.addChild(galaxy);
+      this.backgroundObjects.push(galaxy);
+    }
+
+    // Agujeros Negros (con galaxias alrededor)
+    const blackHoleTextures = [
+      PIXI.Loader.shared.resources['agujero_negro1']?.texture,
+      PIXI.Loader.shared.resources['agujero_negro2']?.texture,
+      PIXI.Loader.shared.resources['agujero_negro3']?.texture,
+      PIXI.Loader.shared.resources['galaxia_agujero']?.texture
+    ].filter(t => t);
+
+    for (let i = 0; i < 12; i++) { // Aumentado de 8 a 12 para llenar más el fondo
+      const texture = blackHoleTextures[Math.floor(Math.random() * blackHoleTextures.length)];
+      if (!texture) continue;
+      
+      const blackHole = new PIXI.Sprite(texture);
+      blackHole.anchor.set(0.5);
+      blackHole.x = Math.random() * starFieldWidth - starFieldWidth / 2;
+      blackHole.y = Math.random() * starFieldHeight - starFieldHeight / 2;
+      blackHole.scale.set(0.4 + Math.random() * 0.5);
+      blackHole.rotation = Math.random() * Math.PI * 2;
+      blackHole.alpha = 0; // Invisible inicialmente
+      blackHole.baseAlpha = Math.min(0.7, 0.4 + Math.random() * 0.25); // Máximo 0.7
+      blackHole.baseX = blackHole.x;
+      blackHole.baseY = blackHole.y;
+      blackHole.level = 2;
+      blackHole.isBackground = true;
+      
+      this.backgroundLevel2.addChild(blackHole);
+      this.backgroundObjects.push(blackHole);
+    }
+  }
+
+  /**
+   * NIVEL 3: Imagen final sutil
+   */
+  createLevel3Background(starFieldWidth, starFieldHeight) {
+    console.log('🌠 Creando fondo NIVEL 3...');
+    
+    const finalTexture = PIXI.Loader.shared.resources['final']?.texture;
+    if (!finalTexture) {
+      console.warn('⚠️ Textura final.webp no encontrada');
+      return;
+    }
+
+    // Imagen final como fondo completo - inicia con zoom para hacer zoom out después
+    const finalBg = new PIXI.Sprite(finalTexture);
+    finalBg.anchor.set(0.5); // Centrado en su punto medio
+    finalBg.x = 1000 // Centro del mundo (0,0)
+    finalBg.y = 500;
+    
+    // Escala inicial: 4x para comenzar el zoom out
+    const screenWidth = this.app.screen.width;
+    const screenHeight = this.app.screen.height;
+    const scaleX = (screenWidth * 5) / finalTexture.width; // 5x para zoom out
+    const scaleY = (screenHeight * 5) / finalTexture.height;
+    finalBg.scale.set(Math.max(scaleX, scaleY));
+    
+    finalBg.alpha = 0; // Invisible inicialmente
+    finalBg.baseAlpha = 0.12; // Muy sutil al principio
+    finalBg.level = 3;
+    finalBg.isFullScreen = true; // Marca que es fullscreen
+    
+    this.backgroundLevel3.addChild(finalBg);
+    this.backgroundObjects.push(finalBg);
+    this.finalBackgroundSprite = finalBg; // Referencia para animación final
+  }
+
+  /**
+   * Actualizar parallax de estrellas y objetos de fondo
    */
   updateStarParallax(cameraX, cameraY) {
     const parallaxFactor = 0.4;
+    
+    // Parallax para estrellas del Nivel 1
     this.stars.forEach(star => {
       star.x = star.baseX - cameraX * parallaxFactor;
       star.y = star.baseY - cameraY * parallaxFactor;
     });
+    
+    // Parallax para objetos de fondo (Nivel 2 y 3)
+    this.backgroundObjects.forEach(obj => {
+      if (obj.baseX !== undefined && obj.baseY !== undefined) {
+        const factor = obj.level === 2 ? 0.3 : 0.2; // Más lento para niveles superiores
+        obj.x = obj.baseX - cameraX * factor;
+        obj.y = obj.baseY - cameraY * factor;
+      }
+    });
+  }
+
+  /**
+   * Transicionar entre fondos de niveles
+   * @param {number} newLevel - Nivel al que transicionar (1, 2 o 3)
+   * @param {number} playerSize - Tamaño actual del jugador
+   */
+  transitionToLevel(newLevel, playerSize = 0) {
+    if (newLevel === this.currentLevel) return;
+    
+    console.log(`🔄 Transicionando de nivel ${this.currentLevel} → ${newLevel}`);
+    const oldLevel = this.currentLevel;
+    this.currentLevel = newLevel;
+    
+    const transitionDuration = 1500; // 2 segundos
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / transitionDuration);
+      const eased = this._easeInOutCubic(progress);
+      
+      // MANTENER las estrellas (backgroundLevel1) SIEMPRE visibles en todos los niveles
+      this.backgroundLevel1.alpha = 1.0; // Estrellas siempre visibles
+      
+      // Fade out nivel anterior (solo niveles 2 y 3)
+      if (oldLevel === 2) {
+        this.backgroundLevel2.alpha = 1 - eased;
+      } else if (oldLevel === 3) {
+        this.backgroundLevel3.alpha = 1 - eased;
+      }
+      
+      // Fade in nuevo nivel
+      if (newLevel === 2) {
+        this.backgroundLevel2.alpha = eased;
+        // Fade in galaxias y agujeros negros
+        this.backgroundObjects.forEach(obj => {
+          if (obj.level === 2 && obj.baseAlpha) {
+            obj.alpha = obj.baseAlpha * eased;
+          }
+        });
+      } else if (newLevel === 3) {
+        this.backgroundLevel3.alpha = eased;
+        // Fade in imagen final sutilmente
+        if (this.finalBackgroundSprite) {
+          this.finalBackgroundSprite.alpha = this.finalBackgroundSprite.baseAlpha * eased;
+        }
+      }
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        console.log(`✅ Transición completada a nivel ${newLevel}`);
+      }
+    };
+    
+    animate();
+  }
+
+  /**
+   * Animación final: Zoom out centrado desde 4x hasta 2x (imagen final doble del tamaño de pantalla)
+   */
+  showFinalScreen() {
+    if (!this.finalBackgroundSprite) return;
+    
+    console.log('🌌 Mostrando pantalla final con zoom out centrado...');
+    
+    const duration = 5000; // 5 segundos
+    const startTime = Date.now();
+    const startAlpha = this.finalBackgroundSprite.alpha;
+    
+    // Calcular escala inicial (4x) y final (2x para imagen doble del tamaño de pantalla)
+    const screenWidth = this.app.screen.width;
+    const screenHeight = this.app.screen.height;
+    const finalTexture = this.finalBackgroundSprite.texture;
+    
+    // Escala inicial: 4x (zoom máximo)
+    const startScaleX = (screenWidth * 5) / finalTexture.width;
+    const startScaleY = (screenHeight * 5) / finalTexture.height;
+    const startScale = Math.max(startScaleX, startScaleY);
+    
+    // Escala final: 2x (doble del tamaño de pantalla)
+    const endScaleX = (screenWidth * 1.7) / finalTexture.width;
+    const endScaleY = (screenHeight * 1.7) / finalTexture.height;
+    const endScale = Math.max(endScaleX, endScaleY);
+    
+    // Centrar en la mitad de la pantalla (posición de la cámara)
+    const centerX = this.app.screen.width / 2;
+    const centerY = this.app.screen.height / 2;
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = this._easeInOutCubic(progress);
+      
+      // Fade in la imagen final a opacidad completa
+      this.finalBackgroundSprite.alpha = startAlpha + (1.0 - startAlpha) * eased;
+      
+      // Zoom out gradual centrado: de 4x a 2x
+      const currentScale = startScale + (endScale - startScale) * eased;
+      this.finalBackgroundSprite.scale.set(currentScale);
+      
+      // Mantener centrado en la mitad de la pantalla
+      this.finalBackgroundSprite.x = 1000;
+      this.finalBackgroundSprite.y = 500;
+      
+      // Ocultar todo lo demás
+      this.backgroundLevel1.alpha = 1 - eased;
+      this.backgroundLevel2.alpha = 1 - eased;
+      this.worldContainer.alpha = 1 - eased;
+      
+      // Ocultar HUD gradualmente
+      this._hideHUD(eased);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        console.log('✅ Pantalla final mostrada - Zoom out completado (4x → 2x)');
+      }
+    };
+    
+    animate();
+  }
+
+  /**
+   * Ocultar elementos del HUD
+   */
+  _hideHUD(fadeAmount) {
+    // Ocultar todos los elementos del HUD incluyendo minimapa
+    const hudElements = [
+      document.getElementById('hud'),
+      document.getElementById('leaderboard'),
+      document.getElementById('scalePanel'),
+      document.getElementById('minimap'), // Contenedor del minimapa
+      document.getElementById('minimapContainer'),
+      document.getElementById('minimapCanvas'), // Canvas del minimapa
+      document.querySelector('.hud-top'),
+      document.querySelector('.hud-bottom-left'),
+      document.querySelector('.hud-bottom-right')
+    ];
+    
+    hudElements.forEach(el => {
+      if (el) {
+        el.style.opacity = (1 - fadeAmount).toString();
+        if (fadeAmount >= 1) {
+          el.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  /**
+   * Easing function para transiciones suaves
+   */
+  _easeInOutCubic(t) {
+    return t < 0.5 ? 2 * t * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   }
 
   // Compute the visual radius so every player "starts at 20" on level entry.
@@ -281,13 +627,25 @@ class GameRenderer {
       return 'LaTierra'; // Nivel 1 Subnivel 4: Planeta pequeño
     } else if (size >= 60 && size < 120) {
       return 'sol';     // Nivel 1 Final: Estrella
-    } else if (size >= 120 && size < 160) {
-      return 'via_lactea'; // Nivel 2: Galaxia
-    } else if (size >= 160 && size <= 200) {
-      return 'exotic_galaxy'; // Nivel 3: Supercúmulo
+    } else if (size >= 120 && size < 125) {
+      return 'via_lactea'; // Nivel 2 Inicio
+    } else if (size >= 125 && size < 135) {
+      return 'galaxia_01'; // Nivel 2 Sub 1
+    } else if (size >= 135 && size < 145) {
+      return 'galaxia_02'; // Nivel 2 Sub 2
+    } else if (size >= 145 && size < 155) {
+      return 'galaxia_03'; // Nivel 2 Sub 3
+    } else if (size >= 155 && size < 165) {
+      return 'galaxia_04'; // Nivel 2/3 Sub 4
+    } else if (size >= 165 && size < 175) {
+      return 'galaxia_05'; // Nivel 3 Sub 5
+    } else if (size >= 175 && size < 185) {
+      return 'galaxia_06'; // Nivel 3 Sub 6
+    } else if (size >= 185) {
+      return 'galaxia_agujero'; // Skin FINAL del juego (185+)
     }
     
-    return 'nebula'; // Fallback
+    return 'galaxia_agujero'; // Fallback - skin final del juego
   }
 
   /**
@@ -324,6 +682,7 @@ class GameRenderer {
         sprite = new PIXI.Sprite(texture);
         sprite.anchor.set(0.5);
         this.worldContainer.addChild(sprite);
+        sprite.zIndex = 20;
         this.playerSprites[player.id] = sprite;
         sprite._currentTextureKey = currentTextureKey;
         
@@ -351,6 +710,7 @@ class GameRenderer {
         });
         nameText.anchor.set(0.5);
         this.worldContainer.addChild(nameText);
+        nameText.zIndex = 40;
         this.playerNameTexts[player.id] = nameText;
       }
 
@@ -365,10 +725,16 @@ class GameRenderer {
       sprite.width = visualSize;
       sprite.height = visualSize;
 
+      // Rotación principal hacia el objetivo
       if (player.targetX !== undefined && player.targetY !== undefined) {
         const angle = Math.atan2(player.targetY - player.y, player.targetX - player.x);
         sprite.rotation = angle;
       }
+      
+      // Añadir rotación sutil modulada por función seno (lenta y suave)
+      const time = Date.now() * 0.00015; // Velocidad muy lenta
+      const subtleRotation = Math.abs(Math.sin(time)) * 0.015; // Oscilación de ±0.15 radianes (~8.6°)
+      sprite.rotation += subtleRotation;
 
       nameText.text = player.name || 'Player';
       nameText.x = Math.round(player.x);
@@ -452,6 +818,47 @@ class GameRenderer {
   }
 
   /**
+   * NEW: Renderizar hazards (hoyos y asteroides) en la escena principal
+   */
+  renderHazards(hazards, visible = true) {
+    if (!this.hazardsGfx) return;
+    const g = this.hazardsGfx;
+    g.visible = !!visible;
+    g.clear();
+    if (!visible || !hazards) return;
+
+    const { blackHole, whiteHole, asteroids } = hazards;
+
+    // Asteroides
+    if (Array.isArray(asteroids) && asteroids.length) {
+      g.lineStyle(1, 0xffffff, 0.6);
+      g.beginFill(0x888888, 0.95);
+      for (const a of asteroids) g.drawCircle(a.x, a.y, a.r);
+      g.endFill();
+    }
+
+    // Black hole
+    if (blackHole) {
+      g.lineStyle(4, 0xff3333, 0.95);
+      g.beginFill(0x000000, 1.0);
+      g.drawCircle(blackHole.x, blackHole.y, blackHole.r);
+      g.endFill();
+    }
+
+    // White hole
+    if (whiteHole) {
+      g.lineStyle(3, 0xffffff, 0.95);
+      g.beginFill(0xffffff, 0.2);
+      g.drawCircle(whiteHole.x, whiteHole.y, whiteHole.r);
+      g.endFill();
+
+      g.beginFill(0x66ccff, 0.75);
+      g.drawCircle(whiteHole.x, whiteHole.y, Math.max(4, whiteHole.r * 0.5));
+      g.endFill();
+    }
+  }
+
+  /**
    * Limpiar gráfico de jugador
    */
   removePlayer(id) {
@@ -483,9 +890,6 @@ class GameRenderer {
     }
   }
 
-  /**
-   * Dibujar minimapa (jugadores, orbes y viewport)
-   */
   /**
    * Dibujar minimapa (jugadores y orbes, SIN rectángulo de viewport)
    */
@@ -539,7 +943,49 @@ class GameRenderer {
       ctx.fill();
     });
 
-    // >>> No se dibuja el rectángulo de viewport <<<
+    // Hazards on minimap
+    try {
+      const hz = (window.game && window.game.clientGameState && window.game.clientGameState.hazards) || null;
+      const me = window.game && window.game.clientGameState && window.game.clientGameState.players[window.game.myPlayerId];
+
+      const r = window.game && window.game._hazardRange;
+      const hasBand = r && Number.isFinite(r.min) && Number.isFinite(r.max);
+      const inBand = !!(me && hasBand && me.size >= r.min && me.size <= r.max);
+      const blocked = window.game && window.game._hazardsPermanentlyDisabled;
+
+      if (hz && inBand && !blocked) {
+        // Asteroids: grey dots
+        if (Array.isArray(hz.asteroids)) {
+          ctx.fillStyle = '#999999';
+          hz.asteroids.forEach(a => {
+            const rr = Math.max(1, Math.min(2, a.r * sx * 0.2));
+            ctx.beginPath();
+            ctx.arc(a.x * sx, a.y * sy, rr, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+        // Black hole
+        if (hz.blackHole) {
+          ctx.strokeStyle = '#ff3333';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(hz.blackHole.x * sx, hz.blackHole.y * sy, 6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // White hole
+        if (hz.whiteHole) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(hz.whiteHole.x * sx, hz.whiteHole.y * sy, 6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#66ccff';
+          ctx.beginPath();
+          ctx.arc(hz.whiteHole.x * sx, hz.whiteHole.y * sy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } catch (e) {}
   }
 
   /**
