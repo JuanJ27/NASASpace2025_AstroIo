@@ -468,9 +468,26 @@ class AstroIoGame {
       }
 
       if (delta.hazards) {
-        this.clientGameState.hazards = delta.hazards;
-      }
+        // Copy incoming hazards
+        const hz = { ...delta.hazards };
 
+        // Decide if hazards should be allowed for *me* right now
+        const me = this.clientGameState.players[this.myPlayerId];
+        const r = this._hazardRange;
+        const inBand = me && r && Number.isFinite(r.min) && Number.isFinite(r.max)
+          ? (me.size >= r.min && me.size <= r.max)
+          : false;
+        const allow = inBand && !this._hazardsPermanentlyDisabled;
+
+        // If not allowed, strip them so there’s no “hidden” black hole anywhere
+        if (!allow) {
+          hz.blackHole = null;
+          hz.whiteHole = null;
+          hz.asteroids = [];
+        }
+
+        this.clientGameState.hazards = hz;
+      }
 
       this.render();
     } catch (error) {
