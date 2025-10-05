@@ -48,7 +48,8 @@ function checkPlayerCollisions(io) {
       const p2 = players[j];
       if (!p2.isAlive) continue;
 
-      if (circlesOverlap(p1.x, p1.y, p1.size, p2.x, p2.y, p2.size)) {
+      const INFLATE = 2; // pixels of radius
+      if (circlesOverlap(p1.x, p1.y, p1.size + INFLATE, p2.x, p2.y, p2.size + INFLATE)) {
         // Determinar quién come a quién
         if (canEat(p1, p2)) {
           // p1 come a p2

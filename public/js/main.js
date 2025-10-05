@@ -99,7 +99,7 @@ class AstroIoGame {
     }
   }
 
-onAssetsLoaded() {
+  onAssetsLoaded() {
     console.log('🎨 Initializing renderer...');
     
     this.renderer = new GameRenderer();
@@ -141,8 +141,6 @@ onAssetsLoaded() {
     console.log('🎮 Game ready!');
   }
 
-  
-
   /**
    * Conectar a Socket.IO
    */
@@ -169,7 +167,7 @@ onAssetsLoaded() {
       setTimeout(() => location.reload(), 3000);
     });
 
-    // Game Over (IMPLEMENTADO AQUÍ)
+    // Game Over
     this.socket.on('gameOver', (data) => {
       console.log(`💀 Game over: ${data.message}`);
       this.isGameActive = false;
@@ -188,7 +186,7 @@ onAssetsLoaded() {
       console.warn('⚠️ Disconnected from server');
     });
 
-    // Enviar nombre
+    // Enviar nombre (si no está conectado aún, GameSocket lo enviará al hacer connect)
     this.socket.setName(this.myPlayerName);
   }
 
@@ -205,44 +203,43 @@ onAssetsLoaded() {
   }
 
   setupKeyboardInput() {
-  document.addEventListener('keydown', (event) => {
-    // Atajos de teclado (opcional)
-    if (event.key === 'Escape' && this.isGameActive) {
-      // Menú de pausa, etc.
-    }
-  });
-}
+    document.addEventListener('keydown', (event) => {
+      // Atajos de teclado (opcional)
+      if (event.key === 'Escape' && this.isGameActive) {
+        // Menú de pausa, etc.
+      }
+    });
+  }
 
-setupTouchInput() {
-  let lastTouchTime = 0;
-  const TOUCH_THROTTLE = 16;
+  setupTouchInput() {
+    let lastTouchTime = 0;
+    const TOUCH_THROTTLE = 16;
 
-  document.addEventListener('touchmove', (event) => {
-    if (!this.socket || !this.isGameActive || !this.myPlayerId || !this.camera) {
-      return;
-    }
+    document.addEventListener('touchmove', (event) => {
+      if (!this.socket || !this.isGameActive || !this.myPlayerId || !this.camera) {
+        return;
+      }
 
-    const now = performance.now();
-    if (now - lastTouchTime < TOUCH_THROTTLE) {
-      return;
-    }
-    lastTouchTime = now;
+      const now = performance.now();
+      if (now - lastTouchTime < TOUCH_THROTTLE) {
+        return;
+      }
+      lastTouchTime = now;
 
-    const touch = event.touches[0];
-    const worldPos = this.camera.screenToWorld(touch.clientX, touch.clientY);
-    this.socket.sendMove(worldPos.x, worldPos.y);
-    
-    event.preventDefault(); // Prevenir scroll en móvil
-  }, { passive: false });
-}
-
+      const touch = event.touches[0];
+      const worldPos = this.camera.screenToWorld(touch.clientX, touch.clientY);
+      this.socket.sendMove(worldPos.x, worldPos.y);
+      
+      event.preventDefault(); // Prevenir scroll en móvil
+    }, { passive: false });
+  }
 
   setupInputHandlers() {
-  this.setupMouseInput();
-  this.setupKeyboardInput();
-  this.setupTouchInput();
-  console.log('✅ Input handlers configured');
-}
+    this.setupMouseInput();
+    this.setupKeyboardInput();
+    this.setupTouchInput();
+    console.log('✅ Input handlers configured');
+  }
 
   /**
    * Actualizar estado del juego desde servidor
@@ -312,22 +309,37 @@ setupTouchInput() {
         this.renderer.worldContainer
       );
 
-      // Actualizar parallax de estrellas
+      // Parallax
       this.renderer.updateStarParallax(this.camera.x, this.camera.y);
 
-      // Actualizar HUD
+      // HUD + escala
       this.ui.updateHUD(myPlayer, Object.keys(this.clientGameState.players).length);
-      
-      // ← NEW: Actualizar Scale Panel
       this.ui.updateScalePanel(myPlayer.size);
-      
       this.finalSize = Math.floor(myPlayer.size);
 
       // Transición de nivel
       this.maybeRunLevelTransition(myPlayer.size);
+
+      // ← NEW: Dibujar minimapa cada frame (después de cámara)
+      this.renderer.drawMinimap(
+        this.clientGameState.players,
+        this.clientGameState.orbs,
+        this.camera,
+        this.worldWidth,
+        this.worldHeight
+      );
+    } else {
+      // Sin jugador local todavía: limpiar/mostrar solo orbes si quieres
+      this.renderer.drawMinimap(
+        this.clientGameState.players,
+        this.clientGameState.orbs,
+        this.camera,
+        this.worldWidth,
+        this.worldHeight
+      );
     }
 
-    // Actualizar leaderboard
+    // Leaderboard
     this.ui.updateLeaderboard(this.clientGameState.players, this.myPlayerId);
   }
 

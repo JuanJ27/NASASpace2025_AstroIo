@@ -21,7 +21,7 @@ class GameUI {
     this.SCALE_MIN_NM = 1;      // 10 Å
     this.SCALE_MAX_NM = 1000;   // 1 µm
     this.SIZE_START = 20;
-    this.SIZE_WRAP = 250;
+    this.SIZE_WRAP = 200;
     
     this.setupEventListeners();
   }
@@ -168,10 +168,12 @@ class GameUI {
    */
   updateLeaderboard(players, myPlayerId) {
     try {
-      const sorted = Object.values(players)
+      const aliveOnly = Object.values(players || {}).filter(p => p && p.isAlive !== false);
+
+      const sorted = aliveOnly
         .sort((a, b) => b.size - a.size)
         .slice(0, 5);
-      
+
       const leaderboardList = document.getElementById('leaderboardList');
       leaderboardList.innerHTML = '';
 

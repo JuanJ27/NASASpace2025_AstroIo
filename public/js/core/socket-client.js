@@ -6,6 +6,7 @@ class GameSocket {
     this.socket = null;
     this.playerId = null;
     this.isConnected = false;
+    this._pendingName = null; // ← NEW: buffer name until connected
   }
 
   /**
@@ -30,6 +31,12 @@ class GameSocket {
     this.socket.on('connect', () => {
       console.log('✅ Connected to server:', this.socket.id);
       this.isConnected = true;
+
+      // ← NEW: si ya teníamos nombre pendiente, enviarlo ahora
+      if (this._pendingName) {
+        this.socket.emit('setName', this._pendingName);
+        console.log('🎮 Sent pending name:', this._pendingName);
+      }
     });
 
     // Desconexión
@@ -51,15 +58,26 @@ class GameSocket {
     // Reconectado
     this.socket.on('reconnect', (attemptNumber) => {
       console.log(`✅ Reconnected after ${attemptNumber} attempts`);
+
+      // Si perdimos la sesión, reenviar el nombre por si acaso
+      if (this._pendingName) {
+        this.socket.emit('setName', this._pendingName);
+      }
     });
   }
 
   /**
    * Enviar nombre del jugador
+   * - Si aún no hay conexión, se envía cuando 'connect' dispare.
    */
   setName(playerName) {
-    console.log('🎮 Sending name to server:', playerName);
-    this.socket.emit('setName', playerName);
+    this._pendingName = playerName; // guardar siempre
+    if (this.isConnected) {
+      console.log('🎮 Sending name to server:', playerName);
+      this.socket.emit('setName', playerName);
+    } else {
+      console.log('⏳ Queued name until connect:', playerName);
+    }
   }
 
   /**
@@ -86,5 +104,5 @@ class GameSocket {
   }
 }
 
-// Exportar instancia global
+// Exportar clase
 window.GameSocket = GameSocket;

@@ -12,6 +12,13 @@ class GameRenderer {
     this.playerNameTexts = {};
     this.orbSprites = {}; // ← CHANGED from orbGraphics
     this.elementTexturesLoaded = false; // ← NEW
+
+    // Minimap bits
+    this.minimapCanvas = null;
+    this.minimapCtx = null;
+    this.minimapCssW = 200;
+    this.minimapCssH = 140;
+    this.minimapDpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
   }
 
   /**
@@ -55,12 +62,30 @@ class GameRenderer {
       this.app.stage.addChild(this.transitionOverlay);
       this.app.stage.sortableChildren = true;
 
+      // Minimap
+      this.minimapCanvas = document.getElementById('minimapCanvas') || null;
+      this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
+      this._setupMinimapBackingStore(); // ← FIX: actually define & call this
+
       console.log('✅ PixiJS initialized');
       return true;
     } catch (error) {
       console.error('❌ Error initializing PixiJS:', error);
       return false;
     }
+  }
+
+  /**
+   * Configurar backing store HiDPI del minimapa
+   */
+  _setupMinimapBackingStore() {
+    if (!this.minimapCanvas || !this.minimapCtx) return;
+    const dpr = this.minimapDpr;
+    this.minimapCanvas.width = Math.round(this.minimapCssW * dpr);
+    this.minimapCanvas.height = Math.round(this.minimapCssH * dpr);
+    this.minimapCanvas.style.width = this.minimapCssW + 'px';
+    this.minimapCanvas.style.height = this.minimapCssH + 'px';
+    this.minimapCtx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in CSS pixels
   }
 
   /**
@@ -128,8 +153,22 @@ class GameRenderer {
    */
   renderPlayer(player, isMe, myPlayerId) {
     try {
-      let graphics = this.playerGraphics[player.id];
-      let nameText = this.playerNameTexts[player.id];
+      if (!player || !player.id) return;
+
+      // If server says this player is dead, purge visuals and skip drawing.
+      if (player.isAlive === false) {
+        if (typeof this.removePlayer === 'function') {
+          this.removePlayer(player.id);
+        }
+        return;
+      }
+
+      // --- your existing drawing logic below ---
+      let graphics = this.playerGraphics ? this.playerGraphics[player.id] : null;
+      let nameText = this.playerNameTexts ? this.playerNameTexts[player.id] : null;
+
+      if (!this.playerGraphics) this.playerGraphics = {};
+      if (!this.playerNameTexts) this.playerNameTexts = {};
 
       if (!graphics) {
         graphics = new PIXI.Graphics();
@@ -151,31 +190,28 @@ class GameRenderer {
         this.playerNameTexts[player.id] = nameText;
       }
 
+      const vis = Math.min(player.size, 200); // purely visual cap
+
       graphics.clear();
 
-      const isBot = !!player.isBot || (typeof player.name === 'string' && player.name.startsWith('★ Bot'));
-      
-      if (isBot) {
-        this.drawStar(graphics, player.x, player.y, 5, Math.max(player.size, 8), Math.max(player.size * 0.5, 4), 0xFFD84A, 0xFFF0A3);
-      } else {
-        const color = isMe ? 0x00ff88 : 0x0088ff;
-        const glowColor = isMe ? 0x00ffaa : 0x00aaff;
+      const color = isMe ? 0x00ff88 : 0x0088ff;
+      const glowColor = isMe ? 0x00ffaa : 0x00aaff;
 
-        graphics.beginFill(glowColor, 0.2);
-        graphics.drawCircle(player.x, player.y, player.size + 8);
-        graphics.endFill();
+      graphics.beginFill(glowColor, 0.2);
+      graphics.drawCircle(player.x, player.y, vis + 8);
+      graphics.endFill();
 
-        graphics.beginFill(color, 0.9);
-        graphics.lineStyle(3, 0xffffff, 0.6);
-        graphics.drawCircle(player.x, player.y, player.size);
-        graphics.endFill();
-      }
+      graphics.beginFill(color, 0.9);
+      graphics.lineStyle(3, 0xffffff, 0.6);
+      graphics.drawCircle(player.x, player.y, vis);
+      graphics.endFill();
 
       nameText.text = player.name || 'Player';
       nameText.x = player.x;
-      nameText.y = player.y - player.size - 20;
-    } catch (error) {
-      console.error(`❌ Error rendering player ${player.id}:`, error);
+      nameText.y = player.y - vis - 20;
+
+    } catch (e) {
+      console.warn('renderPlayer error:', e);
     }
   }
 
@@ -249,14 +285,18 @@ class GameRenderer {
   /**
    * Limpiar gráfico de jugador
    */
-  removePlayer(playerId) {
-    if (this.playerGraphics[playerId]) {
-      this.playerGraphics[playerId].destroy();
-      delete this.playerGraphics[playerId];
-    }
-    if (this.playerNameTexts[playerId]) {
-      this.playerNameTexts[playerId].destroy();
-      delete this.playerNameTexts[playerId];
+  removePlayer(id) {
+    try {
+      if (this.playerGraphics && this.playerGraphics[id]) {
+        this.playerGraphics[id].destroy();
+        delete this.playerGraphics[id];
+      }
+      if (this.playerNameTexts && this.playerNameTexts[id]) {
+        this.playerNameTexts[id].destroy();
+        delete this.playerNameTexts[id];
+      }
+    } catch (e) {
+      console.warn('Renderer.removePlayer error:', e);
     }
   }
 
@@ -268,6 +308,65 @@ class GameRenderer {
       this.orbSprites[orbId].destroy();
       delete this.orbSprites[orbId];
     }
+  }
+
+  /**
+   * Dibujar minimapa (jugadores, orbes y viewport)
+   */
+  /**
+   * Dibujar minimapa (jugadores y orbes, SIN rectángulo de viewport)
+   */
+  drawMinimap(players, orbsMap, camera, worldWidth, worldHeight) {
+    if (!this.minimapCtx) return;
+
+    const ctx = this.minimapCtx;
+    const W = this.minimapCssW;
+    const H = this.minimapCssH;
+
+    // Fondo + borde
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(138,43,226,0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0, 0, W, H);
+
+    // Grid sutil
+    ctx.strokeStyle = 'rgba(138,43,226,0.22)';
+    ctx.lineWidth = 1;
+    for (let gx = 0; gx <= W; gx += 40) {
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+    }
+    for (let gy = 0; gy <= H; gy += 28) {
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+    }
+
+    // Escala
+    const sx = W / Math.max(1, worldWidth);
+    const sy = H / Math.max(1, worldHeight);
+
+    // Orbes
+    if (orbsMap && typeof orbsMap.forEach === 'function') {
+      orbsMap.forEach(o => {
+        const el = (window.elementForOrb && window.elementForOrb(o.id)) || { mini: '#7aa7ff' };
+        const color = el.mini || el.miniColor || '#7aa7ff';
+        ctx.fillStyle = color;
+        ctx.fillRect(o.x * sx, o.y * sy, 2, 2);
+      });
+    }
+
+    // Jugadores (oculta muertos)
+    Object.values(players || {}).forEach(p => {
+      if (!p || p.isAlive === false) return;
+      const isMe = window.game && p.id === window.game.myPlayerId;
+      ctx.fillStyle = isMe ? '#00ffcc' : (p.isBot ? '#ffd84a' : '#66aaff');
+      const r = Math.max(2, Math.min(5, Math.log2(4 + (p.size || 0))));
+      ctx.beginPath();
+      ctx.arc(p.x * sx, p.y * sy, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // >>> No se dibuja el rectángulo de viewport <<<
   }
 
   /**
@@ -284,6 +383,9 @@ class GameRenderer {
         this.transitionOverlay.endFill();
       }
     }
+    // mantener el minimapa nítido
+    this.minimapDpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+    this._setupMinimapBackingStore();
   }
 }
 
