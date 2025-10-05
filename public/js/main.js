@@ -263,6 +263,10 @@ class AstroIoGame {
     if (!loader.resources['agujero_negro3']) {
       loader.add('agujero_negro3', '/assets/agujero_negro3.webp');
     }
+    // AGN activo para white hole
+    if (!loader.resources['agn_activo2']) {
+      loader.add('agn_activo2', '/assets/agn_activo2.webp');
+    }
 
     // Imagen final para Nivel 3
     if (!loader.resources['final']) {

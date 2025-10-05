@@ -829,32 +829,96 @@ class GameRenderer {
 
     const { blackHole, whiteHole, asteroids } = hazards;
 
-    // Asteroides
-    if (Array.isArray(asteroids) && asteroids.length) {
-      g.lineStyle(1, 0xffffff, 0.6);
-      g.beginFill(0x888888, 0.95);
-      for (const a of asteroids) g.drawCircle(a.x, a.y, a.r);
-      g.endFill();
+    // Inicializar contenedor de sprites de hazards si no existe
+    if (!this.hazardSprites) {
+      this.hazardSprites = {
+        blackHole: null,
+        whiteHole: null,
+        asteroids: {}
+      };
     }
 
-    // Black hole
+    // Black hole - usar sprite agujero_negro1
     if (blackHole) {
-      g.lineStyle(4, 0xff3333, 0.95);
-      g.beginFill(0x000000, 1.0);
-      g.drawCircle(blackHole.x, blackHole.y, blackHole.r);
-      g.endFill();
+      if (!this.hazardSprites.blackHole) {
+        const texture = PIXI.Texture.from('agujero_negro1');
+        const sprite = new PIXI.Sprite(texture);
+        sprite.anchor.set(0.5);
+        sprite.alpha = 0.95;
+        this.worldContainer.addChild(sprite);
+        this.hazardSprites.blackHole = sprite;
+      }
+      const bhSprite = this.hazardSprites.blackHole;
+      bhSprite.position.set(blackHole.x, blackHole.y);
+      bhSprite.width = blackHole.r * 5.0;  // Duplicado: 2.5 * 2 = 5.0
+      bhSprite.height = blackHole.r * 5.0;
+      // Rotación sutil similar al jugador pero dividida por 2
+      const time = Date.now() * 0.00015;
+      const subtleRotation = Math.abs(Math.sin(time)) * 0.0075; // 0.015 / 2
+      bhSprite.rotation += subtleRotation;
+      bhSprite.visible = true;
+    } else if (this.hazardSprites.blackHole) {
+      this.hazardSprites.blackHole.visible = false;
     }
 
-    // White hole
+    // White hole - usar sprite agn_activo2
     if (whiteHole) {
-      g.lineStyle(3, 0xffffff, 0.95);
-      g.beginFill(0xffffff, 0.2);
-      g.drawCircle(whiteHole.x, whiteHole.y, whiteHole.r);
-      g.endFill();
+      if (!this.hazardSprites.whiteHole) {
+        const texture = PIXI.Texture.from('agn_activo2');
+        const sprite = new PIXI.Sprite(texture);
+        sprite.anchor.set(0.5);
+        sprite.alpha = 0.9;
+        this.worldContainer.addChild(sprite);
+        this.hazardSprites.whiteHole = sprite;
+      }
+      const whSprite = this.hazardSprites.whiteHole;
+      whSprite.position.set(whiteHole.x, whiteHole.y);
+      whSprite.width = whiteHole.r * 15.0;  // Duplicado: 2.5 * 2 = 5.0
+      whSprite.height = whiteHole.r * 15.0;
+      // Rotación sutil similar al jugador pero dividida por 2
+      const time = Date.now() * 0.00015;
+      const subtleRotation = Math.abs(Math.sin(time)) * 0.0075; // 0.015 / 2
+      whSprite.rotation += subtleRotation;
+      whSprite.visible = true;
+    } else if (this.hazardSprites.whiteHole) {
+      this.hazardSprites.whiteHole.visible = false;
+    }
 
-      g.beginFill(0x66ccff, 0.75);
-      g.drawCircle(whiteHole.x, whiteHole.y, Math.max(4, whiteHole.r * 0.5));
-      g.endFill();
+    // Asteroids - usar sprite agujero_negro2
+    if (Array.isArray(asteroids) && asteroids.length) {
+      const currentIds = new Set(asteroids.map(a => a.id));
+      
+      // Eliminar sprites de asteroides que ya no existen
+      Object.keys(this.hazardSprites.asteroids).forEach(id => {
+        if (!currentIds.has(id)) {
+          this.hazardSprites.asteroids[id].destroy();
+          delete this.hazardSprites.asteroids[id];
+        }
+      });
+
+      // Crear o actualizar sprites de asteroides
+      for (const a of asteroids) {
+        if (!this.hazardSprites.asteroids[a.id]) {
+          const texture = PIXI.Texture.from('agujero_negro2');
+          const sprite = new PIXI.Sprite(texture);
+          sprite.anchor.set(0.5);
+          sprite.alpha = 0.85;
+          this.worldContainer.addChild(sprite);
+          this.hazardSprites.asteroids[a.id] = sprite;
+        }
+        const astSprite = this.hazardSprites.asteroids[a.id];
+        astSprite.position.set(a.x, a.y);
+        astSprite.width = a.r * 4.4;  // Duplicado: 2.2 * 2 = 4.4
+        astSprite.height = a.r * 4.4;
+        // Rotación sutil similar al jugador pero dividida por 2
+        const time = Date.now() * 0.00015;
+        const subtleRotation = Math.abs(Math.sin(time)) * 0.0075; // 0.015 / 2
+        astSprite.rotation += subtleRotation;
+      }
+    } else {
+      // Limpiar todos los sprites de asteroides si no hay asteroides
+      Object.values(this.hazardSprites.asteroids).forEach(sprite => sprite.destroy());
+      this.hazardSprites.asteroids = {};
     }
   }
 
@@ -943,7 +1007,7 @@ class GameRenderer {
       ctx.fill();
     });
 
-    // Hazards on minimap
+    // Hazards on minimap con sprites
     try {
       const hz = (window.game && window.game.clientGameState && window.game.clientGameState.hazards) || null;
       const me = window.game && window.game.clientGameState && window.game.clientGameState.players[window.game.myPlayerId];
@@ -954,35 +1018,38 @@ class GameRenderer {
       const blocked = window.game && window.game._hazardsPermanentlyDisabled;
 
       if (hz && inBand && !blocked) {
-        // Asteroids: grey dots
-        if (Array.isArray(hz.asteroids)) {
-          ctx.fillStyle = '#999999';
+        // Obtener imágenes de las texturas cargadas
+        const blackHoleImg = PIXI.Loader.shared.resources['agujero_negro1']?.texture?.baseTexture?.resource?.source;
+        const whiteHoleImg = PIXI.Loader.shared.resources['agn_activo2']?.texture?.baseTexture?.resource?.source;
+        const asteroidImg = PIXI.Loader.shared.resources['agujero_negro2']?.texture?.baseTexture?.resource?.source;
+
+        // Asteroids: usar sprite agujero_negro2
+        if (Array.isArray(hz.asteroids) && asteroidImg) {
           hz.asteroids.forEach(a => {
-            const rr = Math.max(1, Math.min(2, a.r * sx * 0.2));
-            ctx.beginPath();
-            ctx.arc(a.x * sx, a.y * sy, rr, 0, Math.PI * 2);
-            ctx.fill();
+            const size = Math.max(6, Math.min(10, a.r * sx * 0.4));
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            ctx.drawImage(asteroidImg, a.x * sx - size/2, a.y * sy - size/2, size, size);
+            ctx.restore();
           });
         }
-        // Black hole
-        if (hz.blackHole) {
-          ctx.strokeStyle = '#ff3333';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(hz.blackHole.x * sx, hz.blackHole.y * sy, 6, 0, Math.PI * 2);
-          ctx.stroke();
+        
+        // Black hole: usar sprite agujero_negro1
+        if (hz.blackHole && blackHoleImg) {
+          const size = 12;
+          ctx.save();
+          ctx.globalAlpha = 0.95;
+          ctx.drawImage(blackHoleImg, hz.blackHole.x * sx - size/2, hz.blackHole.y * sy - size/2, size, size);
+          ctx.restore();
         }
-        // White hole
-        if (hz.whiteHole) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(hz.whiteHole.x * sx, hz.whiteHole.y * sy, 6, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.fillStyle = '#66ccff';
-          ctx.beginPath();
-          ctx.arc(hz.whiteHole.x * sx, hz.whiteHole.y * sy, 3, 0, Math.PI * 2);
-          ctx.fill();
+        
+        // White hole: usar sprite agn_activo2
+        if (hz.whiteHole && whiteHoleImg) {
+          const size = 12;
+          ctx.save();
+          ctx.globalAlpha = 0.9;
+          ctx.drawImage(whiteHoleImg, hz.whiteHole.x * sx - size/2, hz.whiteHole.y * sy - size/2, size, size);
+          ctx.restore();
         }
       }
     } catch (e) {}

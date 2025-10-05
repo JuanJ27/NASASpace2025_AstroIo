@@ -270,35 +270,9 @@
         const g = this._gfx;
         g.clear();
 
-        // Asteroids (filled grey circles with a thin outline so they pop)
-        if (Array.isArray(asteroids) && asteroids.length) {
-        g.lineStyle(1, 0xFFFFFF, 0.6);
-        g.beginFill(0x888888, 0.95);
-        for (const a of asteroids) {
-            g.drawCircle(a.x, a.y, a.r);
-        }
-        g.endFill();
-        }
-
-        // Black hole: black fill + bright red outline
-        if (blackHole) {
-        g.lineStyle(4, 0xFF3333, 0.95);
-        g.beginFill(0x000000, 1.0);
-        g.drawCircle(blackHole.x, blackHole.y, blackHole.r);
-        g.endFill();
-        }
-
-        // White hole: white ring + inner blue core
-        if (whiteHole) {
-        g.lineStyle(3, 0xFFFFFF, 0.95);
-        g.beginFill(0xFFFFFF, 0.2);
-        g.drawCircle(whiteHole.x, whiteHole.y, whiteHole.r);
-        g.endFill();
-
-        g.beginFill(0x66CCFF, 0.75);
-        g.drawCircle(whiteHole.x, whiteHole.y, Math.max(4, whiteHole.r * 0.5));
-        g.endFill();
-        }
+        // Nota: Los hazards ahora se renderizan con sprites en renderer.js
+        // usando las texturas: agujero_negro1 (blackHole), agn_activo2 (whiteHole), agujero_negro2 (asteroids)
+        // Este código de graphics se mantiene como fallback pero no se usa activamente
 
         // (Optional) Tiny debug once per state change
         if (allow !== this._lastAllow) {
