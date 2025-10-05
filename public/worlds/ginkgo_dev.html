@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroIo - Space Conquest - Ginkgoo</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="/css/index.css" rel="stylesheet">
+    <!-- PixiJS -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@6.5.2/dist/browser/pixi.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Core JS -->
+    <script src="/js/core/elements.js"></script>
+    <script src="/js/core/socket-client.js"></script>
+    <script src="/js/core/renderer.js"></script>
+    <script src="/js/core/camera.js"></script>
+    <script src="/js/core/ui.js"></script>
+    
+    <!-- Levels JS -->
+    <script src="/js/levels/level1-star.js"></script>
+    <script src="/js/levels/level2-galaxy.js"></script>
+    <script src="/js/levels/level3-cluster.js"></script>
+    
+    <!-- Main Entry Point -->
+    <script src="/js/main.js"></script>
+
+    <!-- Development JS -->
+    <script src="/js/levels/functions_ginkgo.js"></script>
+</head>
+<body>
+    <div id="background"></div>
+
+  <!-- Name Selection Modal -->
+  <div id="nameModal">
+    <div id="nameForm">
+      <h1>ASTRO.IO</h1>
+      <p class="subtitle">Enter the Space Battle Arena</p>
+      <input 
+        type="text" 
+        id="nameInput" 
+        placeholder="Enter your name" 
+        maxlength="20"
+        autocomplete="off"
+      />
+      <div id="errorMessage"></div>
+      <button id="startButton">LAUNCH</button>
+    </div>
+  </div>
+
+  <!-- HUD Panel -->
+  <div id="hud" class="hidden">
+    <h3>STATUS</h3>
+    <div class="stat-row">
+      <span class="stat-label">Name:</span>
+      <span class="stat-value" id="playerName">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Size:</span>
+      <span class="stat-value" id="size">20</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Players:</span>
+      <span class="stat-value" id="players">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Position:</span>
+      <span class="stat-value" id="position">0, 0</span>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboard" class="hidden">
+    <h3>LEADERBOARD</h3>
+    <div id="leaderboardList"></div>
+  </div>
+
+  <!-- Scale Rule (replaces old Instructions block) -->
+  <div id="scalePanel" class="hidden">
+    <div id="scaleTitle">SCALE</div>
+    <div id="scaleBar"><div id="scaleFill"></div></div>
+    <div id="scaleLabels"><span>10 Å</span><span>1 µm</span></div>
+    <div id="scaleCurrent">Current: 10 Å</div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" class="hidden">
+    <div id="gameOverContent">
+      <h1>ELIMINATED</h1>
+      <p id="gameOverMessage">You were eaten!</p>
+      <p id="finalStats"></p>
+      <button id="respawnButton">RESPAWN</button>
+    </div>
+  </div>
+
+  <!-- Minimap -->
+  <div id="minimap">
+    <canvas id="minimapCanvas" width="200" height="140"></canvas>
+  </div>
+</body>
+</html>

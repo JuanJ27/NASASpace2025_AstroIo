@@ -1,325 +1,508 @@
 # AstroIo - Implementation Summary
-
-## Project Completion Status: ✅ FULLY FUNCTIONAL
-
-**Date**: 2 de octubre de 2025  
-**Implementation Time**: Complete  
-**Testing Status**: All tests passed  
-**Production Ready**: Yes
+**Architecture Version:** 2.0 - Modular MVC Pattern  
+**Date:** October 4, 2025  
 
 ---
 
-## 📋 Requirements Checklist
+## 🏗️ Architecture Overview
 
-### Backend (Node.js + Socket.IO)
-- ✅ `server.js` file created with Express and Socket.IO
-- ✅ Game world: 2000x2000 pixels
-- ✅ 200 randomly placed orbs (size 5)
-- ✅ Player management (1-5 players with unique IDs)
-- ✅ Random starting positions for players
-- ✅ Initial player size: 20
-- ✅ Movement processing (speed inversely proportional to size)
-- ✅ Collision detection:
-  - ✅ Players eat orbs when overlapping
-  - ✅ Players eat other players (1.1x size requirement)
-- ✅ Growth mechanics:
-  - ✅ Orb eating: +1 size
-  - ✅ Player eating: +50% of eaten player's size
-- ✅ 60 FPS game loop with broadcast
-- ✅ Orb respawning (maintains constant 200 orbs)
-- ✅ Game over notifications
-- ✅ Comprehensive error handling
-- ✅ Player validation before processing
+### Design Pattern: Modular MVC
 
-### Frontend (PixiJS)
-- ✅ `public/index.html` created
-- ✅ PixiJS 6.5.2 via CDN
-- ✅ 800x600 canvas rendering
-- ✅ Socket.IO client connection
-- ✅ Player rendering:
-  - ✅ Green for own player
-  - ✅ Blue for other players
-- ✅ Orb rendering (red circles)
-- ✅ Camera system (follows player, keeps centered)
-- ✅ Mouse movement capture
-- ✅ Real-time state updates
-- ✅ Game over alerts
-- ✅ UI display (size, player count, position)
-- ✅ Modular structure for sprite replacement
-
-### Project Structure
-- ✅ `server.js` (backend)
-- ✅ `public/index.html` (frontend)
-- ✅ `package.json` (dependencies)
-- ✅ `test-client.js` (automated testing)
-- ✅ `test-combat.js` (combat testing)
-- ✅ `test.log` (test results)
-- ✅ `README.md` (documentation)
-- ✅ `start.sh` (quick start script)
-
-### Testing and Robustness
-- ✅ Server runs without crashes
-- ✅ Multiple browser instances tested
-- ✅ Automated tests created and passed:
-  - ✅ 3-player movement test (30s)
-  - ✅ 5-player combat test (45s)
-- ✅ All mechanics verified:
-  - ✅ Player movement
-  - ✅ Orb eating
-  - ✅ Player eating
-  - ✅ Size growth
-  - ✅ Speed reduction
-  - ✅ Collision detection
-  - ✅ Game over notifications
-  - ✅ Max player limit
-  - ✅ Disconnection handling
-- ✅ No crashes during testing
-- ✅ Test results logged to `test.log`
-
-### Future-Proofing
-- ✅ Code comments for sprite replacement points
-- ✅ Shader effect points documented
-- ✅ Modular architecture
-- ✅ Extension points clearly marked
-- ✅ Space-themed enhancement notes
-
-### Constraints
-- ✅ No database (in-memory state)
-- ✅ PixiJS via CDN (no local installation)
-- ✅ Browser compatible (Chrome, Firefox, etc.)
-- ✅ Optimized for 1-5 players
-
----
-
-## 🎮 How to Use
-
-### Quick Start
-```bash
-cd /home/juan/AstroIo
-./start.sh
 ```
-
-### Manual Start
-```bash
-cd /home/juan/AstroIo
-npm install  # if not already done
-node server.js
-# Open http://localhost:3000 in browser
-```
-
-### Run Tests
-```bash
-# Basic test (3 players, 30s)
-node test-client.js
-
-# Combat test (5 players, 45s)
-node test-combat.js
+┌─────────────────────────────────────────────────────────┐
+│                    CLIENT (Browser)                      │
+├─────────────────────────────────────────────────────────┤
+│  main.js (Controller)                                    │
+│    ├─── socket-client.js (Network Layer)               │
+│    ├─── renderer.js (View)                             │
+│    ├─── camera.js (View Logic)                         │
+│    ├─── ui.js (View - DOM)                             │
+│    └─── levels/*.js (Level Modules)                    │
+└─────────────────────────────────────────────────────────┘
+                           ↕ Socket.IO
+┌─────────────────────────────────────────────────────────┐
+│                    SERVER (Node.js)                      │
+├─────────────────────────────────────────────────────────┤
+│  server.js (Entry Point + Game Loop)                    │
+│    ├─── sockets/connection.js (Event Handlers)         │
+│    ├─── sockets/movement.js (Event Handlers)           │
+│    └─── core/                                           │
+│          ├─── gameState.js (Model - State)             │
+│          ├─── player.js (Model - Entities)             │
+│          ├─── physics.js (Business Logic)              │
+│          ├─── collisions.js (Business Logic)           │
+│          └─── bots.js (AI Logic)                       │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📊 Test Results Summary
+## 📦 Module Descriptions
 
-### Test Session 1: Browser Connection
-- **Status**: ✅ Success
-- **Client**: Browser
-- **Result**: Player connected and rendered correctly
+### Server Modules
 
-### Test Session 2: Multi-Client Test
-- **Status**: ✅ Success
-- **Duration**: 30 seconds
-- **Clients**: 3 AI players
-- **Results**:
-  - Player1: Size 20 → 28 (+40%)
-  - Player2: Size 20 → 30 (+50%)
-  - Player3: Size 20 → 38 (+90%)
-- **Observations**: All mechanics working, no errors
+#### **server.js** (Main Entry Point)
+```javascript
+Purpose: Initialize Express, Socket.IO, and Game Loop
+Key Functions:
+  - app.listen(PORT) - Start HTTP server
+  - gameLoop() - 60 FPS game tick
+  - io.on('connection') - Handle player connections
+  
+Game Loop Responsibilities:
+  - Update player positions (human + bots)
+  - Check collisions (orb + player)
+  - Calculate delta state
+  - Emit state updates to clients
+  - Clean up dead players
+```
 
-### Test Session 3: Combat Test
-- **Status**: ✅ Success
-- **Duration**: 45 seconds
-- **Clients**: 5 AI players (max capacity)
-- **Results**:
-  - Player1: Eliminated by Player5
-  - Player2: Eliminated by Player5
-  - Player3: Eliminated by Player5
-  - Player4: Eliminated by Player5
-  - Player5: Winner (Size 74, 4 players eaten)
-- **Observations**: Combat mechanics perfect, no crashes
+#### **core/gameState.js** (Central State)
+```javascript
+Exports:
+  - GAME_CONFIG: Object with all game constants
+  - LEVELS: Array of level definitions
+  - gameState: Live game state { players, orbs }
+  - initializeOrbs(): Create initial orbs
+  - orbIdCounter(): Generate unique orb IDs
+  - botIdCounter(): Generate unique bot IDs
 
-### Overall Test Statistics
-- **Total Test Time**: ~80 seconds
-- **Total Clients**: 11 (1 browser + 10 automated)
-- **Success Rate**: 100%
-- **Crashes**: 0
-- **Errors**: 0
+State Structure:
+  gameState = {
+    players: { [socketId]: PlayerObject },
+    orbs: [ OrbObject, ... ],
+    humanCount: number,
+    lastUpdate: timestamp
+  }
+```
+
+#### **core/player.js** (Player Management)
+```javascript
+Functions:
+  - createPlayer(id, name) → PlayerObject
+  - createBot(id, name) → BotObject
+  - getRandomColor() → hex color
+  - getPlayerLevel(size) → { key, name, index }
+  - canEat(eater, target) → boolean
+  - growPlayer(player, amount) → mutates player
+  - respawnPlayer(player) → reset to initial state
+
+PlayerObject Schema:
+  {
+    id: string,
+    name: string,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    target: { x, y },
+    speed: number,
+    isBot: boolean,
+    isAlive: boolean,
+    score: number,
+    joinTime: timestamp,
+    levelKey: string,
+    levelName: string
+  }
+```
+
+#### **core/physics.js** (Movement & Math)
+```javascript
+Functions:
+  - updatePlayerPosition(player, dt) → mutates player.x, player.y
+  - calculateSpeed(player) → number (size-based)
+  - circlesOverlap(x1,y1,r1, x2,y2,r2) → boolean
+  - isNearby(x1,y1, x2,y2, maxDist) → boolean
+  - distance(x1,y1, x2,y2) → number
+  - clamp(value, min, max) → number
+
+Algorithm: Linear interpolation movement
+  velocity = (target - position) * (speed * dt)
+  position += velocity
+  position = clamp(position, 0, WORLD_SIZE)
+```
+
+#### **core/collisions.js** (Collision Detection)
+```javascript
+Functions:
+  - checkOrbCollisions(player) → orbIdsRemoved[]
+  - checkPlayerCollisions(io) → playerIdsRemoved[]
+  - spawnOrb() → OrbObject
+
+Collision Logic:
+  1. Check if circles overlap (using circlesOverlap())
+  2. If player eats orb:
+     - Grow player by PLAYER_GROWTH_FROM_ORB
+     - Remove orb from gameState.orbs
+     - Spawn new orb
+  3. If player eats player:
+     - Check canEat(eater, target)
+     - Grow eater by target.size * PLAYER_GROWTH_FROM_PLAYER
+     - Mark target as dead
+     - Emit 'gameOver' if target is human
+     - Respawn if target is bot
+```
+
+#### **core/bots.js** (Bot AI)
+```javascript
+Functions:
+  - initializeBots() → create NUM_BOTS bots
+  - updateBots(dt) → update all bot behavior
+  - findNearestOrb(bot) → OrbObject | null
+  - findNearestThreat(bot) → PlayerObject | null
+
+AI State Machine:
+  1. Move towards current target
+  2. 30% chance: Target nearest orb (if < 300px away)
+  3. If threat detected (< 400px):
+     - Calculate flee direction (opposite of threat)
+     - Set target away from threat
+  4. 1% chance per frame: Random target
+```
+
+#### **sockets/connection.js** (Connection Events)
+```javascript
+Events Handled:
+  - 'connection': New player connects
+  - 'setName': Player sends name
+  - 'disconnect': Player leaves
+
+Flow:
+  1. Check if game is full (MAX_HUMAN_PLAYERS)
+  2. Validate player name
+  3. Create player object
+  4. Add to gameState.players
+  5. Emit 'init' with world size
+  6. On disconnect: Remove player, decrement humanCount
+```
+
+#### **sockets/movement.js** (Movement Events)
+```javascript
+Events Handled:
+  - 'move': Player sends mouse position
+
+Flow:
+  1. Validate player exists
+  2. Update player.target = { x, y }
+  3. Physics engine moves player towards target in gameLoop
+```
 
 ---
 
-## 🏆 Key Features Implemented
+### Client Modules
 
-### Gameplay
-1. **Smooth Movement**: Mouse-controlled with natural deceleration
-2. **Fair Combat**: 1.1x size requirement prevents equal-size conflicts
-3. **Progressive Growth**: Balance between orb and player eating
-4. **Speed Scaling**: Larger players move slower (strategic depth)
-5. **World Boundaries**: Players can't escape the world
+#### **main.js** (Game Controller)
+```javascript
+Class: AstroIoGame
+  Properties:
+    - socket: GameSocket instance
+    - renderer: GameRenderer instance
+    - camera: GameCamera instance
+    - ui: GameUI instance
+    - clientGameState: { players, orbs }
+    - myPlayerId, myPlayerName, isGameActive
+    
+  Methods:
+    - init(): Initialize UI
+    - startGame(name): Load assets, connect socket
+    - connectToServer(): Setup socket listeners
+    - updateGameState(delta): Merge server delta
+    - render(): Draw frame
+    - maybeRunLevelTransition(size): Check level change
+    - runZoomTransition(): Animate zoom effect
 
-### Technical
-1. **60 FPS Updates**: Smooth gameplay experience
-2. **Low Latency**: Optimized state transmission
-3. **Concurrent Players**: Handles 5 players simultaneously
-4. **Error Recovery**: Graceful handling of disconnections
-5. **Memory Efficient**: No leaks detected in tests
+Game Loop (client-side):
+  Server emits 'gameState' → updateGameState(delta) → render()
+```
 
-### User Experience
-1. **Visual Feedback**: Color-coded players and orbs
-2. **UI Information**: Real-time stats display
-3. **Game Over Alert**: Clear elimination notification
-4. **Camera System**: Smooth following of player
-5. **Instructions**: On-screen controls guide
+#### **core/socket-client.js** (Network Layer)
+```javascript
+Class: GameSocket
+  Methods:
+    - connect(): Initialize Socket.IO
+    - setName(name): Emit 'setName'
+    - sendMove(x, y): Emit 'move'
+    - on(event, callback): Register listener
+    
+  Events Listened:
+    - 'connect', 'disconnect'
+    - 'init', 'gameFull', 'gameOver', 'gameState'
+```
+
+#### **core/renderer.js** (PixiJS Renderer)
+```javascript
+Class: GameRenderer
+  Properties:
+    - app: PIXI.Application
+    - worldContainer: PIXI.Container (game objects)
+    - starContainer: PIXI.ParticleContainer (background)
+    - playerGraphics: { [id]: PIXI.Graphics }
+    - orbGraphics: { [id]: PIXI.Graphics }
+    
+  Methods:
+    - initialize(): Create PixiJS app
+    - createStarryBackground(): Generate 300 stars
+    - updateStarParallax(cameraX, cameraY): Move stars
+    - renderPlayer(player, isMe, myPlayerId): Draw player
+    - renderOrb(orb): Draw orb
+    - drawStar(): Draw 5-point star (for bots)
+    - removePlayer(id), removeOrb(id): Cleanup
+    
+Rendering Pipeline:
+  1. Clear graphics (graphics.clear())
+  2. Draw glow layer
+  3. Draw main shape (circle or star)
+  4. Update name text position
+```
+
+#### **core/camera.js** (Camera System)
+```javascript
+Class: GameCamera
+  Properties:
+    - x, y: Camera world position
+    - viewScale: Current zoom level
+    
+  Methods:
+    - update(player, screenW, screenH, container):
+        * Calculate desired zoom: 1.4 - (size / 250)
+        * Lerp current scale to desired
+        * Center camera on player
+        * Clamp to world bounds
+        * Apply to worldContainer position
+        
+    - screenToWorld(screenX, screenY): Convert coordinates
+    
+Zoom Formula:
+  viewScale = clamp(1.4 - (player.size / 250), 0.6, 1.4)
+  Small players (size=20): scale = 1.32 (zoomed in)
+  Large players (size=500): scale = 0.6 (zoomed out)
+```
+
+#### **core/ui.js** (UI Management)
+```javascript
+Class: GameUI
+  DOM Elements:
+    - nameModal, hud, leaderboard, gameOverScreen
+    
+  Methods:
+    - validateName(name): Check length, characters
+    - showError(message): 3-second toast
+    - hideNameModal(), showHUD(name): Toggle views
+    - updateHUD(player, count): Update size, position, players
+    - updateLeaderboard(players, myId): Sort by size, top 5
+    - showGameOver(data, finalSize, name): Display stats
+    - formatTime(ms): Convert to mm:ss
+```
 
 ---
 
-## 🔮 Future Enhancement Roadmap
+## 🎮 Level System Implementation
 
-### Phase 1: Visual Improvements
-1. Replace `PIXI.Graphics` with custom sprites
-2. Add particle effects (trails, explosions)
-3. Implement glow filters on orbs
-4. Animated background (space stars)
+### Level Definition (gameState.js)
+```javascript
+const LEVELS = [
+  { min: 0,   max: 199.999, key: 'solar',        name: 'Solar System' },
+  { min: 200, max: 399.999, key: 'galaxy',       name: 'Galaxy' },
+  { min: 400, max: 599.999, key: 'cluster',      name: 'Cluster' },
+  { min: 600, max: 799.999, key: 'supercluster', name: 'Supercluster' },
+  { min: 800, max: 9999,    key: 'cosmicweb',    name: 'Cosmic Web' }
+];
+```
 
-### Phase 2: Gameplay Enhancements
-1. Player names/nicknames
-2. Power-up orbs (speed, shield, size boost)
-3. Team modes (2v2, 3v3)
-4. Leaderboard system
-5. Configurable game settings
+### Level Module Structure
+```javascript
+// public/js/levels/level1-star.js
+class SolarSystemLevelClient {
+  constructor() {
+    this.key = 'solar';
+    this.name = 'Solar System';
+    this.minSize = 0;
+    this.maxSize = 199;
+    this.backgroundColor = 0x000033;
+  }
+  
+  onEnter() {
+    console.log('Entered Solar System');
+    // Change background, load assets, etc.
+  }
+  
+  onExit() {
+    console.log('Exited Solar System');
+    // Cleanup
+  }
+  
+  render(renderer, camera) {
+    // Custom rendering (planets, asteroids, etc.)
+  }
+  
+  update(deltaTime) {
+    // Level-specific updates
+  }
+}
 
-### Phase 3: Visual Effects (Space Theme)
-1. Black hole shader for large players
-2. Space distortion effects
-3. Gravity well visualization
-4. Cosmic particle systems
-5. Nebula backgrounds
+window.SolarSystemLevel = new SolarSystemLevelClient();
+```
 
-### Phase 4: Advanced Features
-1. Mobile touch controls
-2. Gamepad support
-3. Replay system
-4. Statistics tracking
-5. Achievement system
-
----
-
-## 📝 Code Quality
-
-### Documentation
-- ✅ Comprehensive inline comments
-- ✅ Function documentation with purpose
-- ✅ Extension points clearly marked
-- ✅ README with full instructions
-- ✅ Test log with detailed results
-
-### Architecture
-- ✅ Modular design (easy to extend)
-- ✅ Separation of concerns (game logic vs rendering)
-- ✅ Configurable constants
-- ✅ Clean code structure
-- ✅ Error handling throughout
-
-### Performance
-- ✅ Efficient collision detection
-- ✅ Minimal network traffic
-- ✅ Object lifecycle management
-- ✅ No memory leaks
-- ✅ Optimized rendering
-
----
-
-## 🐛 Known Issues
-
-**None** - All functionality working as expected.
-
----
-
-## 🎓 Learning Outcomes
-
-This implementation demonstrates:
-1. **Real-time multiplayer** with Socket.IO
-2. **Game loop architecture** (server-authoritative)
-3. **Collision detection** algorithms
-4. **Client-server synchronization**
-5. **State management** in multiplayer games
-6. **Canvas rendering** with PixiJS
-7. **Camera systems** in 2D games
-8. **Error handling** in network applications
-
----
-
-## 📦 Dependencies
-
-```json
-{
-  "express": "^4.18.2",
-  "socket.io": "^4.6.1",
-  "socket.io-client": "^4.6.1"
+### Level Transition Flow
+```javascript
+// In main.js
+maybeRunLevelTransition(playerSize) {
+  const tier = Math.floor(playerSize / 200); // 0, 1, 2, 3, 4
+  
+  if (tier !== this.lastLevelTier) {
+    this.lastLevelTier = tier;
+    
+    // Exit old level
+    if (window[`Level${this.lastLevelTier}`]) {
+      window[`Level${this.lastLevelTier}`].onExit();
+    }
+    
+    // Enter new level
+    if (window[`Level${tier}`]) {
+      window[`Level${tier}`].onEnter();
+    }
+    
+    // Run zoom animation
+    this.runZoomTransition();
+  }
 }
 ```
 
-All dependencies are production-ready, actively maintained, and have no security vulnerabilities.
+---
+
+## 🔄 Network Protocol (Delta Updates)
+
+### State Update Message
+```javascript
+// Server → Client (every 16ms)
+{
+  players: {
+    [playerId]: { x, y, size, name, levelKey, isAlive, ... }
+  },
+  orbs: [
+    { id, x, y, size, color }
+  ],
+  removedOrbs: [ orbId1, orbId2 ],
+  removedPlayers: [ playerId1 ]
+}
+```
+
+### Delta Optimization
+```javascript
+// Only send changed properties
+const delta = { players: {}, orbs: [], removedOrbs: [], removedPlayers: [] };
+
+for (const [id, player] of Object.entries(gameState.players)) {
+  const prev = lastState.players[id];
+  
+  // Only include if changed
+  if (!prev || prev.x !== player.x || prev.y !== player.y || ...) {
+    delta.players[id] = { ...player };
+  }
+}
+```
 
 ---
 
-## 🎯 Success Criteria Met
+## 🎯 Game Loop Timing
 
-✅ 1-5 player online multiplayer  
-✅ Core Agar.io mechanics implemented  
-✅ Node.js + Socket.IO backend  
-✅ PixiJS frontend  
-✅ Real-time synchronization  
-✅ Collision detection working  
-✅ Growth mechanics working  
-✅ 60 FPS game loop  
-✅ Error handling implemented  
-✅ Comprehensive testing completed  
-✅ No database required  
-✅ Browser compatible  
-✅ Future-proof architecture  
-✅ Well-documented code  
-✅ Test log created  
+### Server Loop (60 FPS)
+```javascript
+function gameLoop() {
+  const start = Date.now();
+  const dt = start - lastLoopTime;
+  
+  // Update physics (60 FPS = 16.67ms per frame)
+  updatePlayers(dt);
+  updateBots(dt);
+  checkCollisions();
+  
+  // Send state
+  io.emit('gameState', delta);
+  
+  // Schedule next tick
+  const elapsed = Date.now() - start;
+  setTimeout(gameLoop, Math.max(0, 16.67 - elapsed));
+}
+```
 
----
-
-## 🚀 Deployment Ready
-
-The application is ready for:
-- ✅ Local development
-- ✅ Local network multiplayer
-- ✅ Cloud deployment (Heroku, AWS, etc.)
-- ✅ Production use with 1-5 players
-
----
-
-## 📞 Support
-
-All files are in: `/home/juan/AstroIo/`
-
-Key files:
-- `server.js` - Backend server
-- `public/index.html` - Frontend client
-- `README.md` - Full documentation
-- `test.log` - Test results
-- `start.sh` - Quick start script
+### Client Render Loop (requestAnimationFrame)
+```javascript
+// Triggered by 'gameState' event
+socket.on('gameState', (delta) => {
+  updateGameState(delta);  // Merge state
+  render();                // Draw frame (browser handles timing)
+});
+```
 
 ---
 
-## ✨ Final Notes
+## 🐛 Error Handling
 
-This implementation is **production-ready** and **fully tested**. All requirements have been met and exceeded with comprehensive testing, documentation, and future-proofing. The code is clean, modular, and ready for enhancements like custom sprites, shaders, and visual effects.
+### Server
+```javascript
+try {
+  // Game loop logic
+} catch (err) {
+  console.error('❌ Error in game loop:', err.message);
+  console.error(err);
+  // Continue loop (don't crash server)
+}
+```
 
-**Status**: ✅ COMPLETE AND VERIFIED  
-**Quality**: ⭐⭐⭐⭐⭐ (5/5)  
-**Ready to Play**: YES!
+### Client
+```javascript
+try {
+  // Render logic
+} catch (error) {
+  console.error('❌ Error rendering:', error);
+  // UI will show last good frame
+}
+```
 
-Enjoy the game! 🎮✨
+---
+
+## 📊 Performance Optimizations
+
+1. **Delta State Updates**: Only send changed data
+2. **PIXI ParticleContainer**: For 300 stars (GPU-optimized)
+3. **Object Pooling**: Reuse Graphics objects
+4. **Spatial Hashing**: (TODO) For collision detection
+5. **Throttled Mouse Input**: Max 60 updates/sec
+6. **Debounced Window Resize**: 100ms delay
+
+---
+
+## 🔐 Security Considerations
+
+1. **Input Validation**: Name length, character whitelist
+2. **Rate Limiting**: Max 5 players, max 60 moves/sec
+3. **Server Authority**: All physics calculated server-side
+4. **Sanitized Output**: Escape player names in HTML
+
+---
+
+## 📝 Future Enhancements
+
+### Planned Features
+- [ ] Minimap with viewport indicator
+- [ ] Particle effects (trails, explosions)
+- [ ] Power-ups (speed boost, shield, split)
+- [ ] Team mode (color-coded teams)
+- [ ] Sound effects (eat, death, level up)
+- [ ] Background music per level
+- [ ] Leaderboard persistence (database)
+- [ ] Spectator mode
+
+### Technical Debt
+- [ ] Add TypeScript types
+- [ ] Unit tests (Jest)
+- [ ] Integration tests (Socket.IO)
+- [ ] Performance profiling
+- [ ] Code coverage (>80%)
+- [ ] API documentation (JSDoc)
+
+---
+
+**Last Updated:** October 4, 2025  
+**Documented By:** ginkgo  
