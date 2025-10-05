@@ -7,7 +7,7 @@ const GAME_CONFIG = {
   NUM_ORBS: parseInt(process.env.NUM_ORBS) || 200,
   MAX_PLAYERS: parseInt(process.env.MAX_PLAYERS) || 5,
   ORB_SIZE: 5,
-  PLAYER_INITIAL_SIZE: 20,
+  PLAYER_INITIAL_SIZE: 10,
   TARGET_FPS: 60,
   UPDATE_INTERVAL: 1000 / 60,
   BASE_SPEED: 5,

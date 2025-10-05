@@ -1,10 +1,11 @@
 const { GAME_CONFIG } = require('./gameState');
+const { getLevelForSize } = require('../../shared/levelsConfig');
 
 /**
  * Crear un nuevo jugador
  */
 function createPlayer(id, name) {
-  return {
+  const p = {
     id,
     name,
     x: Math.random() * GAME_CONFIG.WORLD_WIDTH,
@@ -19,15 +20,22 @@ function createPlayer(id, name) {
     isBot: false,
     isAlive: true,
     score: 0,
-    joinTime: Date.now() // ← NUEVO: timestamp de cuando se unió
+    joinTime: Date.now()
   };
+
+  // ▼ NEW: baseline (where the current level starts) and level index
+  const lvl = getLevelForSize(p.size);
+  p.levelEntrySize = p.size;           // “start at 20” baseline
+  p.levelIndex     = lvl.clientLevel;  // remember which level we’re in
+
+  return p;
 }
 
 /**
  * Crear un bot
  */
 function createBot(id, name) {
-  return {
+  const p = {
     id,
     name: name || `Bot_${id}`,
     x: Math.random() * GAME_CONFIG.WORLD_WIDTH,
@@ -42,8 +50,15 @@ function createBot(id, name) {
     isBot: true,
     isAlive: true,
     score: 0,
-    joinTime: Date.now() // ← NUEVO
+    joinTime: Date.now()
   };
+
+  // ▼ NEW baseline + level index for bots too
+  const lvl = getLevelForSize(p.size);
+  p.levelEntrySize = p.size;
+  p.levelIndex     = lvl.clientLevel;
+
+  return p;
 }
 
 /**
@@ -51,20 +66,9 @@ function createBot(id, name) {
  */
 function getRandomColor() {
   const colors = [
-    '#FF6B6B', // Rojo
-    '#4ECDC4', // Turquesa
-    '#45B7D1', // Azul
-    '#FFA07A', // Salmón
-    '#98D8C8', // Verde agua
-    '#F7DC6F', // Amarillo
-    '#BB8FCE', // Púrpura
-    '#85C1E2', // Azul claro
-    '#F8B739', // Naranja
-    '#52D726', // Verde lima
-    '#FF69B4', // Rosa
-    '#00CED1'  // Cian oscuro
+    '#FF6B6B','#4ECDC4','#45B7D1','#FFA07A','#98D8C8','#F7DC6F',
+    '#BB8FCE','#85C1E2','#F8B739','#52D726','#FF69B4','#00CED1'
   ];
-  
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
@@ -83,7 +87,6 @@ function getPlayerLevel(size) {
  * Verificar si un jugador puede comer a otro
  */
 function canEat(eater, target) {
-  // El jugador debe ser al menos 10% más grande
   return eater.size >= target.size * GAME_CONFIG.EAT_SIZE_MULTIPLIER;
 }
 
@@ -91,12 +94,21 @@ function canEat(eater, target) {
  * Hacer crecer al jugador
  */
 function growPlayer(player, amount) {
+  // level before growth
+  const before = getLevelForSize(player.size).clientLevel;
+
   player.size += amount;
   player.score += Math.floor(amount);
-  
-  // Actualizar velocidad (más grande = más lento)
-  player.speed = GAME_CONFIG.BASE_SPEED * (20 / player.size);
-  
+
+  // speed is recalculated in physics with effective radius; keep a safe default here
+  player.speed = GAME_CONFIG.BASE_SPEED * (20 / Math.max(1, player.size));
+
+  // level after growth: if changed, reset baseline so “effective = 20” at entry
+  const after = getLevelForSize(player.size).clientLevel;
+  if (after !== before) {
+    player.levelEntrySize = player.size; // snapshot at new level entry
+    player.levelIndex     = after;
+  }
   return player;
 }
 
@@ -110,7 +122,12 @@ function respawnPlayer(player) {
   player.isAlive = true;
   player.speed = GAME_CONFIG.BASE_SPEED;
   player.target = { x: player.x, y: player.y };
-  
+
+  // ▼ NEW: also reset baseline + level index on respawn
+  const lvl = getLevelForSize(player.size);
+  player.levelEntrySize = player.size;
+  player.levelIndex     = lvl.clientLevel;
+
   return player;
 }
 

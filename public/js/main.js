@@ -54,6 +54,48 @@ class AstroIoGame {
     // =============================================================
   }
 
+  _ensureLevelTitleBanner() {
+    let el = document.getElementById('levelTitleBanner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'levelTitleBanner';
+      Object.assign(el.style, {
+        position: 'fixed',
+        top: '18%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        padding: '12px 22px',
+        borderRadius: '10px',
+        fontSize: '28px',
+        fontWeight: '900',
+        letterSpacing: '1px',
+        color: '#fff',
+        background: 'rgba(0,0,0,0.35)',
+        border: '2px solid #88CCFF',
+        textShadow: '0 0 12px #88CCFF',
+        zIndex: 99999,
+        pointerEvents: 'none',
+        fontFamily: 'Orbitron, Arial, sans-serif',
+        opacity: '0',
+        transition: 'opacity 180ms ease-out'
+      });
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  _showLevelTitle(text, borderColorHex = 0x88ccff) {
+    const el = this._ensureLevelTitleBanner();
+    el.textContent = text;
+    const hex = '#'+borderColorHex.toString(16).padStart(6,'0');
+    el.style.borderColor = hex;
+    el.style.textShadow = `0 0 12px ${hex}`;
+    // fade in/out
+    el.style.opacity = '1';
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => { el.style.opacity = '0'; }, 1200);
+  }
+
   /**
    * ============================================
    * SISTEMA DE REGISTRO DE NIVELES PERSONALIZADOS
@@ -61,39 +103,21 @@ class AstroIoGame {
    * ============================================
    */
   registerCustomLevels() {
-    console.log('📋 Registering custom levels...');
-    
-    // Registro de niveles disponibles (agregar según developer)
     const levelRegistry = [
-      // Darwin - Cluster Galaxy (Nivel 4: 100-119)
-      { level: 4, instance: window.DarwinClusterLevel, name: 'Darwin Cluster' },
-      
-      // Juan - Galaxy Expansion (Nivel 3: 80-99) - EJEMPLO
-      { level: 3, instance: window.JuanGalaxyLevel, name: 'Juan Galaxy' },
-
-      // Profe - Galactic Scale (Nivel 3: 200-399)
-      { level: 3, instance: window.GalaxyLevelProfe, name: 'Galactic Scale' },
-      
-      // Tomás - Nebula Zone (Nivel 2: 60-79) - EJEMPLO
-      { level: 2, instance: window.TomasNebulaLevel, name: 'Tomas Nebula' },
-      
-      // Ginkgo - Solar Storm (Nivel 1: 40-59) - EJEMPLO
-      { level: 1, instance: window.GinkgoSolarLevel, name: 'Ginkgo Solar' },
-      
-      // Profe - Quantum Field (Nivel 5: 120+) - EJEMPLO
-      { level: 5, instance: window.ProfeQuantumLevel, name: 'Profe Quantum' }
+      { level: 2, instance: window.ThirdSolarLevel,  name: 'Solar 3' },
+      { level: 1, instance: window.SecondSolarLevel, name: 'Solar 2' },
+      { level: 0, instance: window.FirstSolarLevel,  name: 'Solar 1' }
     ];
-    
-    // Registrar solo los niveles que existen
     levelRegistry.forEach(({ level, instance, name }) => {
-      if (instance) {
-        this.customLevels[level] = instance;
-        console.log(`  ✅ Registered: ${name} (Level ${level})`);
-      }
+      if (instance) this.customLevels[level] = instance;
     });
-    
-    console.log(`📦 Total custom levels registered: ${Object.keys(this.customLevels).length}`);
   }
+
+  _toggleQuantumByLevel(currentLevel) {
+    if (currentLevel === 0) this._startQuantumTunnel();
+    else this._stopQuantumTunnel();
+  }
+
 
   /**
    * Iniciar juego con nombre de jugador
@@ -208,9 +232,6 @@ class AstroIoGame {
       this.camera = new GameCamera(this.worldWidth, this.worldHeight);
       
       console.log(`✅ Initialized as player ${this.myPlayerId}`);
-
-      // >>> START Quantum Tunnel client emitter after we are active
-      this._startQuantumTunnel();
     });
 
     this.socket.on('gameFull', (data) => {
@@ -423,16 +444,91 @@ class AstroIoGame {
    * Sincronizado con LEVELS_CONFIG del servidor
    * ============================================
    */
+  // Exact size bands that match getLevelInfo() thresholds
+  getBoundsForLevel(level) {
+    switch (level) {
+      case 0: return { min: 2,   max: 39  };
+      case 1: return { min: 40,  max: 79  };
+      case 2: return { min: 80,  max: 119 };
+      case 3: return { min: 120, max: 159 };
+      case 4: return { min: 160, max: 200 };
+      default: return { min: 1,  max: 200 };
+    }
+  }
+
+  // Big, animated level title banner (replaces your existing _showLevelBanner)
+  _showLevelBanner(text, color = '#00FFAA', opts = {}) {
+    try {
+      // Remove any previous banner so they don't stack
+      const old = document.getElementById('levelTitleBanner');
+      if (old) old.remove();
+
+      const div = document.createElement('div');
+      div.id = 'levelTitleBanner';
+      div.textContent = text || 'LEVEL UP';
+
+      // Options
+      const {
+        seconds = 1.8,             // how long it stays fully visible
+        fontSize = 72,             // BIG title
+        blurGlow = 22,             // glow strength
+        topPct = 32,               // vertical position (percent)
+        border = true
+      } = opts;
+
+      const borderCSS = border ? `4px solid ${color}` : 'none';
+
+      Object.assign(div.style, {
+        position: 'fixed',
+        top: `${topPct}%`,
+        left: '50%',
+        transform: 'translate(-50%, -50%) scale(0.92)',
+        padding: '18px 32px',
+        borderRadius: '16px',
+        fontSize: `${fontSize}px`,
+        fontWeight: '900',
+        lineHeight: '1.1',
+        letterSpacing: '1.5px',
+        color: '#ffffff',
+        background: 'rgba(0,0,0,0.35)',
+        border: borderCSS,
+        textShadow: `0 0 ${blurGlow}px ${color}, 0 0 ${Math.round(blurGlow*0.6)}px ${color}`,
+        zIndex: 99999,
+        pointerEvents: 'none',
+        fontFamily: 'Orbitron, Arial, sans-serif',
+        opacity: '0',
+        transition: 'transform 220ms ease-out, opacity 220ms ease-out',
+        boxShadow: `0 0 24px rgba(0,0,0,0.45), inset 0 0 24px ${color}66`
+      });
+
+      document.body.appendChild(div);
+
+      // Fade/scale in
+      requestAnimationFrame(() => {
+        div.style.opacity = '1';
+        div.style.transform = 'translate(-50%, -50%) scale(1.0)';
+      });
+
+      // Fade out after visible time
+      const totalMs = Math.max(600, seconds * 1000);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transform = 'translate(-50%, -50%) scale(0.98)';
+        setTimeout(() => div.remove(), 260);
+      }, totalMs);
+    } catch {}
+  }
+
   getLevelInfo(size) {
-    if (size >= 2 && size < 20) {
+    if (size >= 2 && size < 40) {
       return { level: 0, name: 'Solar System 0.1', key: 'amns-micr', range: '20-39' };
-    } else if (size >= 20 && size < 40) {
+    } else if (size >= 40 && size < 80) {
       return { level: 1, name: 'Solar System 0.2', key: 'micr-m', range: '40-59' };
-    } else if (size >= 40 && size < 60) {
+    } else if (size >= 80 && size < 120) {
       return { level: 2, name: 'Solar System 0.3', key: 'm-Mm', range: '60-79' };
-    } else if (size >= 60 && size < 100) {
+    } else if (size >= 120 && size < 160) {
       return { level: 3, name: 'Galaxy', key: 'galaxy-Kpc', range: '80-99' };
-    } else if (size >= 100 && size <= 130) {
+    } else if (size >= 160 && size <= 200) {
       return { level: 4, name: 'Cluster Galaxy', key: 'cluster-galaxy-Mpc', range: '100-119' };
     } else {
       return { level: 5, name: 'Beyond Cluster', key: 'beyond', range: '120+' };
@@ -445,47 +541,84 @@ class AstroIoGame {
    * Soporta niveles personalizados de todos los developers
    * ============================================
    */
+
+  _toggleQuantumByLevel(currentLevel) {
+    if (currentLevel === 0) {
+      this._startQuantumTunnel();
+    } else {
+      this._stopQuantumTunnel();
+    }
+  }
   maybeRunLevelTransition(size) {
-    // Obtener información del nivel actual basado en size
+    // 1) Figure out current level by size
     const levelInfo = this.getLevelInfo(size);
     const currentLevel = levelInfo.level;
-    
-    // Verificar si cambió de nivel
+
+    // 2) If we crossed a band and we're not already animating, switch level
     if (currentLevel !== this.lastLevelTier && !this.isTransition) {
       const oldLevel = this.lastLevelTier;
-      const oldLevelInfo = oldLevel >= 0 ? this.getLevelInfo(this.getSizeForLevel(oldLevel)) : { name: 'None', range: '-' };
-      
+      const oldLevelInfo = oldLevel >= 0
+        ? this.getLevelInfo(this.getSizeForLevel(oldLevel))
+        : { name: 'None', range: '-' };
+
       this.lastLevelTier = currentLevel;
-      
-      console.log(`🔄 ========== LEVEL TRANSITION ==========`);
-      console.log(`   📊 Size: ${size}`);
-      console.log(`   ⬅️  Previous: Level ${oldLevel} (${oldLevelInfo.name})`);
-      console.log(`   ➡️  Current: Level ${currentLevel} (${levelInfo.name})`);
-      console.log(`   🎯 Range: ${levelInfo.range}`);
-      console.log(`========================================`);
-      
-      // ========== GESTIÓN AUTOMÁTICA DE NIVELES PERSONALIZADOS ==========
+
+      // --- Fallback: if the level didn't set the scale rule, set it here ---
+      if (!this.ui._activeScaleRule) {
+        // nm spans per level
+        const nmBands = {
+          0: { nmMin: 0.1,  nmMax: 1e3,  name: 'Solar System 0.1 (Å → µm)' },
+          1: { nmMin: 1e3,  nmMax: 1e9,  name: 'Solar System 0.2 (µm → m)' },
+          2: { nmMin: 1e9,  nmMax: 1e15, name: 'Solar System 0.3 (m → Mm)' },
+          3: { nmMin: 1e15, nmMax: 1e18, name: 'Galaxy' },             // placeholder
+          4: { nmMin: 1e18, nmMax: 1e21, name: 'Cluster Galaxy' },     // placeholder
+        };
+        const band = nmBands[currentLevel] || nmBands[0];
+        if (this.ui?.setScaleRule) {
+          this.ui.setScaleRule({
+            name: band.name,
+            nmMin: band.nmMin,
+            nmMax: band.nmMax
+          });
+        }
+      }
+
+
+      // Provide SIZE bounds for the scale bar normalization
+      const bounds = this.getBoundsForLevel(currentLevel);
+      window.currentLevelSizeBounds = { ...bounds };
+      // Exit/enter level packs (textures/backgrounds/etc.)
       this.exitCustomLevel(oldLevel);
       this.enterCustomLevel(currentLevel);
-      // ==================================================================
-      
-      // Ejecutar animación de transición visual
-      this.runZoomTransition();
+
+      // inside maybeRunLevelTransition(size), right after computing transitionColor:
+      const lvlInstance = this.customLevels[currentLevel];
+      const transitionColor = (lvlInstance && lvlInstance.transitionColor) || 0x00ffaa;
+
+      // Show BIG level title
+      const hex = '#' + transitionColor.toString(16).padStart(6, '0');
+      this._showLevelBanner(levelInfo.name || `Level ${currentLevel}`, hex, {
+        seconds: 2.0,
+        fontSize: 72,
+        blurGlow: 28,
+        topPct: 30,
+        border: true
+      });
+
+      // Keep your existing zoom transition & quantum toggle lines as-is
+      this.runZoomTransition(transitionColor);
+      this._toggleQuantumByLevel(currentLevel);
     }
-    
-    // ========== ACTUALIZAR ANIMACIONES DE NIVELES ACTIVOS ==========
+
+    // 3) Update active custom levels (animations)
     const now = performance.now();
-    const deltaTime = (now - this.lastUpdateTime) / 1000; // Convertir a segundos
+    const dt = (now - this.lastUpdateTime) / 1000;
     this.lastUpdateTime = now;
-    
-    // Actualizar todos los niveles personalizados que estén activos
-    Object.entries(this.customLevels).forEach(([level, levelInstance]) => {
-      if (levelInstance && levelInstance.active && levelInstance.update) {
-        levelInstance.update(deltaTime);
-      }
+    Object.values(this.customLevels).forEach(lvl => {
+      if (lvl && lvl.active && typeof lvl.update === 'function') lvl.update(dt);
     });
-    // ================================================================
   }
+
 
   /**
    * ============================================
@@ -530,48 +663,58 @@ class AstroIoGame {
     return levelSizes[level] || 30;
   }
 
-  /**
-   * ============================================
-   * ANIMACIÓN DE TRANSICIÓN DE ZOOM
-   * ============================================
-   */
-  runZoomTransition() {
+/**
+ * ============================================
+ * ANIMACIÓN DE TRANSICIÓN DE ZOOM
+ * ============================================
+ */
+// ---- replace the whole function ----
+  runZoomTransition(colorHex = 0x000000, onDone) {
     this.isTransition = true;
-    const dur = 420; // 420ms
+    const dur = 420;
     const start = performance.now();
     const baseScale = this.camera.viewScale;
     const pulse = baseScale * 0.88;
 
+    // lock visual radius to 20 during the pulse
+    window._transitionVisOverride = 20;
+
     const step = () => {
       const t = (performance.now() - start) / dur;
       const k = Math.min(1, Math.max(0, t));
-      
-      // Calcular escala (zoom in -> zoom out)
       const s = k < 0.5
         ? baseScale + (pulse - baseScale) * (k / 0.5)
         : pulse + (baseScale - pulse) * ((k - 0.5) / 0.5);
-      
-      this.renderer.worldContainer.scale.set(s, s);
 
-      // Fade negro
+      // camera supports transition scale
+      this.camera.setTransitionScale(s);
+
+      // nice color overlay
       const alpha = (k < 0.5 ? k / 0.5 : (1 - k) / 0.5) * 0.6;
       this.renderer.transitionOverlay.clear();
-      this.renderer.transitionOverlay.beginFill(0x000000, alpha);
-      this.renderer.transitionOverlay.drawRect(
-        0, 0,
-        this.renderer.app.screen.width,
-        this.renderer.app.screen.height
-      );
+      this.renderer.transitionOverlay.beginFill(colorHex, alpha);
+      this.renderer.transitionOverlay.drawRect(0, 0, this.renderer.app.screen.width, this.renderer.app.screen.height);
       this.renderer.transitionOverlay.endFill();
 
       if (k < 1) {
         requestAnimationFrame(step);
       } else {
+        // end of pulse
         this.renderer.transitionOverlay.clear();
+        this.camera.setTransitionScale(null);
         this.isTransition = false;
+
+        // keep the circle visually at 20 AFTER the pulse:
+        const me = this.clientGameState.players[this.myPlayerId];
+        if (me) {
+          window._visBaseline = { atSize: me.size, base: 20 };
+        }
+        window._transitionVisOverride = null; // stop forcing exactly 20
+
+        if (typeof onDone === 'function') onDone();
       }
     };
-    
+
     requestAnimationFrame(step);
   }
 

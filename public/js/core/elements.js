@@ -56,6 +56,20 @@ const ELEMENTS = [
   }
 ];
 
+const ELEMENTS_L1 = [
+  { key:'Si', name:'Silicatos', weight:0.50, points:0.5, textureKey:'texSilicatos', src:'/assets/silicatos.webp', color:'#a08f6c', miniColor:'#a08f6c' },
+  { key:'Cb', name:'Carbonáceos', weight:0.20, points:2.0, textureKey:'texCarbonaceo', src:'/assets/carbonaceo.webp', color:'#3b3b3b', miniColor:'#3b3b3b' },
+  { key:'Hi', name:'Mantos de Hielo', weight:0.12, points:5.0, textureKey:'texHielo', src:'/assets/bola_hielo.webp', color:'#9adfff', miniColor:'#9adfff' },
+  { key:'Ox', name:'Óxidos y sulfuros', weight:0.18, points:3.0, textureKey:'texOxidos', src:'/assets/oxidos.webp', color:'#8a9aa5', miniColor:'#8a9aa5' }
+];
+
+// L2: Asteroides C / S / M
+const ELEMENTS_L2 = [
+  { key:'AC', name:'Asteroide C', weight:0.50, points:1.0, textureKey:'texAstC', src:'/assets/asteroide_C.webp', color:'#7f8c8d', miniColor:'#7f8c8d' },
+  { key:'AS', name:'Asteroide S', weight:0.30, points:2.0, textureKey:'texAstS', src:'/assets/asteroide_S.webp', color:'#c0a16b', miniColor:'#c0a16b' },
+  { key:'AM', name:'Asteroide M', weight:0.20, points:4.0, textureKey:'texAstM', src:'/assets/asteroides_M.webp', color:'#a7a7a7', miniColor:'#a7a7a7' }
+];
+
 // Pre-calculate cumulative weights for weighted random selection
 const CUM_WEIGHTS = (() => {
   let acc = 0;
@@ -102,6 +116,8 @@ function getElementTextureSources() {
 
 // Export to window for global access
 window.ELEMENTS = ELEMENTS;
+window.ELEMENTS_L1 = ELEMENTS_L1;
+window.ELEMENTS_L2 = ELEMENTS_L2;
 window.CUM_WEIGHTS = CUM_WEIGHTS;
 window.hash01 = hash01;
 window.elementForOrb = elementForOrb;

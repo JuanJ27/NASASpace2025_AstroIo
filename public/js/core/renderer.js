@@ -148,6 +148,32 @@ class GameRenderer {
     });
   }
 
+  // Compute the visual radius so every player "starts at 20" on level entry.
+  _effectiveVisualRadius(player, isMe) {
+    const BASE = 20;
+
+    // While the zoom transition is running, keep MY circle pinned at 20 for the pulse.
+    if (isMe && window._transitionVisOverride != null) {
+      return window._transitionVisOverride;
+    }
+
+    // Prefer the authoritative baseline coming from the server
+    if (Number.isFinite(player.levelEntrySize)) {
+      const grown = player.size - player.levelEntrySize;
+      return Math.max(6, Math.min(200, BASE + grown));
+    }
+
+    // Fallback to the old client baseline if present (legacy)
+    if (isMe && window._visBaseline && Number.isFinite(window._visBaseline.atSize)) {
+      const base = Number.isFinite(window._visBaseline.base) ? window._visBaseline.base : BASE;
+      const vis  = base + (player.size - window._visBaseline.atSize);
+      return Math.max(6, Math.min(200, vis));
+    }
+
+    // Last resort: cap raw size (prevents giant sprites)
+    return Math.max(6, Math.min(200, player.size));
+  }
+
   /**
    * Renderizar jugador
    */
@@ -190,8 +216,7 @@ class GameRenderer {
         this.playerNameTexts[player.id] = nameText;
       }
 
-      const vis = Math.min(player.size, 200); // purely visual cap
-
+      const vis = this._effectiveVisualRadius(player, isMe);
       graphics.clear();
 
       const color = isMe ? 0x00ff88 : 0x0088ff;

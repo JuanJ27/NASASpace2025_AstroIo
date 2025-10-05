@@ -1,15 +1,19 @@
 const { GAME_CONFIG } = require('./gameState');
 
-/**
- * Limitar valor entre mínimo y máximo
- */
+/** Limitar valor entre mínimo y máximo */
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-/**
- * Verificar si dos círculos se superponen
- */
+/** NEW: radio efectivo = 20 en la entrada de nivel + crecimiento dentro del nivel */
+function effectiveRadius(player) {
+  const entry = Number.isFinite(player.levelEntrySize) ? player.levelEntrySize : player.size;
+  const base  = GAME_CONFIG.PLAYER_INITIAL_SIZE || 20; // “visual 20”
+  const grown = player.size - entry;                   // cuánto creció desde que entró
+  return Math.max(1, base + grown);
+}
+
+/** Verificar si dos círculos se superponen */
 function circlesOverlap(x1, y1, r1, x2, y2, r2) {
   const dx = x1 - x2;
   const dy = y1 - y2;
@@ -18,26 +22,20 @@ function circlesOverlap(x1, y1, r1, x2, y2, r2) {
   return distanceSquared < (radiusSum * radiusSum);
 }
 
-/**
- * Verificar si dos objetos están cerca
- */
+/** Verificar si dos objetos están cerca */
 function isNearby(x1, y1, x2, y2, maxDistance) {
   const dx = x1 - x2;
   const dy = y1 - y2;
   return (dx * dx + dy * dy) < (maxDistance * maxDistance);
 }
 
-/**
- * Calcular velocidad basada en tamaño
- */
+/** Calcular velocidad basada en tamaño (usa radio efectivo) */
 function calculateSpeed(player) {
   const baseSpeed = player.isBot ? GAME_CONFIG.BOT_SPEED : GAME_CONFIG.BASE_SPEED;
-  return baseSpeed * (20 / player.size);
+  return baseSpeed * (20 / effectiveRadius(player));
 }
 
-/**
- * Actualizar posición del jugador
- */
+/** Actualizar posición del jugador */
 function updatePlayerPosition(player, deltaTime) {
   if (!player.target || !player.isAlive) return;
 
@@ -56,19 +54,14 @@ function updatePlayerPosition(player, deltaTime) {
   }
 }
 
-/**
- * Verificar si un jugador puede comer a otro
- */
+/** Verificar si un jugador puede comer a otro (usa radio efectivo) */
 function canEat(eater, target) {
   if (!eater.isAlive || !target.isAlive) return false;
-  // Slightly friendlier threshold server-side
   const THRESH = GAME_CONFIG.EAT_SIZE_MULTIPLIER || 1.1;
-  return eater.size >= target.size * Math.min(THRESH, 1.05);
+  return effectiveRadius(eater) >= effectiveRadius(target) * Math.min(THRESH, 1.05);
 }
 
-/**
- * Calcular distancia entre dos puntos
- */
+/** Calcular distancia entre dos puntos */
 function distance(x1, y1, x2, y2) {
   const dx = x1 - x2;
   const dy = y1 - y2;
@@ -82,5 +75,6 @@ module.exports = {
   calculateSpeed,
   updatePlayerPosition,
   canEat,
-  distance
+  distance,
+  effectiveRadius // ← exportado
 };
