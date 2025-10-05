@@ -11,6 +11,7 @@ class AstroIoGame {
     this.renderer = null;
     this.camera = null;
     this.ui = null;
+    this.cardsManager = null; // ← NEW
     
     this.myPlayerId = null;
     this.myPlayerName = '';
@@ -50,6 +51,7 @@ class AstroIoGame {
     console.log('🎮 Initializing AstroIo (Unified System)...');
     
     this.ui = new GameUI();
+    this.cardsManager = new FloatingCardsManager(); // ← NEW
     window.game = this; // Exponer globalmente
     
     // ========== NUEVO: Registrar niveles personalizados ==========
@@ -535,6 +537,10 @@ class AstroIoGame {
       this.ui.updateScalePanel(myPlayer.size);
       this.finalSize = Math.floor(myPlayer.size);
       this.maybeRunLevelTransition(myPlayer.size);
+
+      if (this.cardsManager) {
+        this.cardsManager.checkAndShowCard(myPlayer.size); // Using size as points for now
+      }
 
       this.renderer.drawMinimap(
         this.clientGameState.players,
