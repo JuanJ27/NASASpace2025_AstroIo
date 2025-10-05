@@ -42,7 +42,7 @@ app.get('/', (req, res) => {
     console.log("••••• Entrando en modo desarrollo ••••");
     const devFiles = {
       'ginkgo': 'ginkgo_dev.html',
-      'juanjo': 'juanjo_dev.html',
+      'juan': 'juanjo_dev.html',
       'tomas': 'tomas_dev.html',
       'darwin': 'darwin_dev.html'
     };
