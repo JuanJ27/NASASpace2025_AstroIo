@@ -62,17 +62,23 @@ class GameUI {
   hideNameModal() { this.nameModal.classList.add('hidden'); }
 
   showHUD(playerName) {
-    this.hud.classList.remove('hidden');
-    this.scalePanel.classList.remove('hidden');
-    this.leaderboard.classList.remove('hidden');
-    document.getElementById('playerName').textContent = playerName;
+    if (this.hud) this.hud.classList.remove('hidden');
+    if (this.scalePanel) this.scalePanel.classList.remove('hidden');
+    if (this.leaderboard) this.leaderboard.classList.remove('hidden');
+    
+    const playerNameEl = document.getElementById('playerName');
+    if (playerNameEl) playerNameEl.textContent = playerName;
   }
 
   updateHUD(player, playerCount) {
     try {
-      document.getElementById('size').textContent = Math.floor(player.size);
-      document.getElementById('players').textContent = playerCount;
-      document.getElementById('position').textContent = `${Math.floor(player.x)}, ${Math.floor(player.y)}`;
+      const sizeEl = document.getElementById('size');
+      const playersEl = document.getElementById('players');
+      const positionEl = document.getElementById('position');
+      
+      if (sizeEl) sizeEl.textContent = Math.floor(player.size);
+      if (playersEl) playersEl.textContent = playerCount;
+      if (positionEl) positionEl.textContent = `${Math.floor(player.x)}, ${Math.floor(player.y)}`;
     } catch (e) { console.error('❌ Error updating HUD:', e); }
   }
 
@@ -196,9 +202,11 @@ class GameUI {
 
   updateLeaderboard(players, myPlayerId) {
     try {
+      const leaderboardList = document.getElementById('leaderboardList');
+      if (!leaderboardList) return; // Si no existe el leaderboard, salir silenciosamente
+      
       const aliveOnly = Object.values(players || {}).filter(p => p && p.isAlive !== false);
       const sorted = aliveOnly.sort((a, b) => b.size - a.size).slice(0, 5);
-      const leaderboardList = document.getElementById('leaderboardList');
       leaderboardList.innerHTML = '';
       sorted.forEach((player, index) => {
         const entry = document.createElement('div');
@@ -215,9 +223,12 @@ class GameUI {
 
   showGameOver(data, finalSize, playerName) {
     try {
-      document.getElementById('gameOverMessage').textContent = data.message || 'You were eaten!';
-      document.getElementById('finalStats').textContent = `Final Size: ${finalSize} | Name: ${playerName}`;
-      this.gameOverScreen.classList.remove('hidden');
+      const messageEl = document.getElementById('gameOverMessage');
+      const statsEl = document.getElementById('finalStats');
+      
+      if (messageEl) messageEl.textContent = data.message || 'You were eaten!';
+      if (statsEl) statsEl.textContent = `Final Size: ${finalSize} | Name: ${playerName}`;
+      if (this.gameOverScreen) this.gameOverScreen.classList.remove('hidden');
     } catch (e) { console.error('❌ Error showing game over:', e); }
   }
 

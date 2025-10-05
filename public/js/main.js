@@ -200,6 +200,51 @@ class AstroIoGame {
       loader.add('exotic_galaxy', '/assets/exotic_galaxy.webp');
     }
 
+    // ========== FONDOS DE NIVEL ==========
+    // Meteoros para Nivel 1
+    if (!loader.resources['meteoro1']) {
+      loader.add('meteoro1', '/assets/meteoro1.webp');
+    }
+    if (!loader.resources['meteoro2']) {
+      loader.add('meteoro2', '/assets/meteoro2.webp');
+    }
+    if (!loader.resources['meteoro_azul']) {
+      loader.add('meteoro_azul', '/assets/meteoro_azul.webp');
+    }
+
+    // Galaxias para fondo de Nivel 2 (no usadas como elementos)
+    if (!loader.resources['galaxia_04']) {
+      loader.add('galaxia_04', '/assets/galaxia_04.webp');
+    }
+    if (!loader.resources['galaxia_05']) {
+      loader.add('galaxia_05', '/assets/galaxia_05.webp');
+    }
+    if (!loader.resources['galaxia_06']) {
+      loader.add('galaxia_06', '/assets/galaxia_06.webp');
+    }
+    if (!loader.resources['galaxia_agujero']) {
+      loader.add('galaxia_agujero', '/assets/galaxia_agujero.webp');
+    }
+    if (!loader.resources['brazos_azules']) {
+      loader.add('brazos_azules', '/assets/brazos_azules.webp');
+    }
+
+    // Agujeros negros para Nivel 2
+    if (!loader.resources['agujero_negro1']) {
+      loader.add('agujero_negro1', '/assets/agujero_negro1.webp');
+    }
+    if (!loader.resources['agujero_negro2']) {
+      loader.add('agujero_negro2', '/assets/agujero_negro2.webp');
+    }
+    if (!loader.resources['agujero_negro3']) {
+      loader.add('agujero_negro3', '/assets/agujero_negro3.webp');
+    }
+
+    // Imagen final para Nivel 3
+    if (!loader.resources['final']) {
+      loader.add('final', '/assets/final.webp');
+    }
+
     // Cargar texturas de elementos
     const elementTextures = window.getElementTextureSources();
     console.log('📦 Loading element textures:', elementTextures);
@@ -745,6 +790,28 @@ class AstroIoGame {
         topPct: 30,
         border: true
       });
+
+      // ========== TRANSICIÓN DE FONDOS ==========
+      // Determinar el fondo visual según el nivel principal
+      let backgroundLevel = 1;
+      if (levelInfo.mainLevel === 2) {
+        backgroundLevel = 2;
+      } else if (levelInfo.mainLevel === 3) {
+        backgroundLevel = 3;
+      }
+      
+      // Transicionar al nuevo fondo
+      if (this.renderer && this.renderer.transitionToLevel) {
+        this.renderer.transitionToLevel(backgroundLevel, size);
+      }
+      
+      // Si llegamos al final del juego (size > 200), mostrar pantalla final
+      if (size >= 200 && this.renderer && this.renderer.showFinalScreen) {
+        setTimeout(() => {
+          this.renderer.showFinalScreen();
+        }, 3000); // Esperar 3 segundos antes de mostrar la pantalla final
+      }
+      // =========================================
 
       // Keep your existing zoom transition & quantum toggle lines as-is
       this.runZoomTransition(transitionColor);
