@@ -4,7 +4,9 @@ const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
 
-// Importar módulos
+// ─────────────────────────────────────────────────────────────────────────────
+// Core modules
+// ─────────────────────────────────────────────────────────────────────────────
 const { GAME_CONFIG, gameState } = require('./server/core/gameState');
 const { handleConnection } = require('./server/sockets/connection');
 const { handleMovement } = require('./server/sockets/movement');
@@ -13,18 +15,49 @@ const { checkOrbCollisions, checkPlayerCollisions } = require('./server/core/col
 const { initializeBots, updateBots } = require('./server/core/bots');
 const { getPlayerLevel } = require('./server/core/player');
 
+// Hazards (server authoritative) — LAZY activation only
+const {
+  enableHazardsForLevel3,
+  disableHazards,
+  areHazardsActive,
+  updateHazards,
+  getHazardsSnapshot
+} = require('./server/core/hazards');
+
+// Pull hazard band from shared/levelsConfig
+const { getLevelForSize } = require('./shared/levelsConfig');
+
+function getHazardBandFromConfig() {
+  const cfg = require('./shared/levelsConfig').LEVELS_CONFIG || [];
+  const s3 = cfg.find(e => e.level === 1 && e.sublevel === 3);
+  const s4 = cfg.find(e => e.level === 1 && e.sublevel === 4);
+  if (s3 && s4) return { min: Math.min(s3.min, s4.min), max: Math.max(s3.max, s4.max) };
+
+  const c2 = cfg.find(e => e.clientLevel === 2);
+  const c3 = cfg.find(e => e.clientLevel === 3);
+  if (c2 && c3) return { min: Math.min(c2.min, c3.min), max: Math.max(c3.max, c2.max) };
+
+  return { min: 27, max: 119 };
+}
+
+const HAZARD_RANGE = getHazardBandFromConfig();
+
+
+// (optional) shared band check if you prefer to lazy-init when someone hits L3
+// const { getLevelForSize } = require('./shared/levelsConfig');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Express / Socket setup
+// ─────────────────────────────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
+  cors: { origin: '*', methods: ['GET', 'POST'] },
   transports: ['websocket', 'polling'],
   allowEIO3: true
 });
 
-io.engine.on('initial_headers', (headers, req) => {
+io.engine.on('initial_headers', (headers) => {
   console.log('📡 SocketIO headers:', headers);
 });
 
@@ -36,110 +69,128 @@ const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const USER = process.env.USER || '';
 
-/**
- * Rutas condicionales
- * - Mantiene la lógica original
- * - Integra soporte para 'juan' o 'juanjo'
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Routes
+// ─────────────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  if (NODE_ENV == 'development') {
-    console.log("••••• Entrando en modo desarrollo ••••" + USER);
+  if (NODE_ENV === 'development') {
+    console.log('••••• Entrando en modo desarrollo •••• ' + USER);
 
-    // Acepta USER= 'juan' o 'juanjo' y usa el mismo archivo dev
     const devFiles = {
-      'ginkgo': 'ginkgo_dev.html',
-      'juan':   'juanjo_dev.html',   // ← integrado del nuevo server
-      'juanjo': 'juanjo_dev.html',   // ← compat con tu server anterior
-      'tomas':  'tomas_dev.html',
-      'darwin': 'darwin_dev.html',
-      'profe': 'profe_dev.html'
+      ginkgo: 'ginkgo_dev.html',
+      juan: 'juanjo_dev.html',
+      juanjo: 'juanjo_dev.html',
+      tomas: 'tomas_dev.html',
+      darwin: 'darwin_dev.html',
+      profe: 'profe_dev.html'
     };
 
     const key = (USER || '').toLowerCase();
     const devFile = devFiles[key] || 'index.html';
-    console.log("------>" + USER);
     const filePath = path.join(__dirname, 'public', 'worlds', devFile);
     console.log(`🔧 DEV MODE: ${devFile} for ${USER}`);
     res.sendFile(filePath);
   } else {
     const filePath = path.join(__dirname, 'public', 'index.html');
-    console.log(`🚀 PROD MODE: index.html`);
+    console.log('🚀 PROD MODE: index.html');
     res.sendFile(filePath);
   }
 });
 
-// Servir estáticos (una sola vez)
+// Static assets
 app.use(express.static(path.join(__dirname, 'public')));
-
-// NUEVO: servir assets compartidos en /shared (integrado del nuevo server)
+// Shared assets
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
-/**
- * Socket.IO
- * - Un solo bloque de connection (evita doble registro de listeners)
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Socket.IO handlers
+// ─────────────────────────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
   handleConnection(io, socket);
   handleMovement(socket);
 });
 
-// Game Loop Variables
+// ─────────────────────────────────────────────────────────────────────────────
+// Game loop state
+// ─────────────────────────────────────────────────────────────────────────────
 let lastLoopTime = Date.now();
-let lastState = {
-  players: {},
-  orbs: []
-};
+let lastState = { players: {}, orbs: [] };
 let frameCount = 0;
 let fpsUpdateTime = Date.now();
 
-/**
- * Game Loop Principal
- */
+// (optional) track hazards signature (not strictly required)
+let lastHazardsSig = '';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Game Loop
+// ─────────────────────────────────────────────────────────────────────────────
 function gameLoop() {
   const start = Date.now();
 
   try {
-    const dt = start - lastLoopTime;
+    const dt = start - lastLoopTime; // ms since last frame
     lastLoopTime = start;
 
-    // FPS counter
+    // FPS counter (optional)
     frameCount++;
     if (start - fpsUpdateTime >= 1000) {
       frameCount = 0;
       fpsUpdateTime = start;
     }
 
-    // Actualizar jugadores humanos
-    Object.values(gameState.players).forEach(player => {
+    // Update human players
+    Object.values(gameState.players).forEach((player) => {
       if (player.isBot) return;
 
       updatePlayerPosition(player, dt);
       checkOrbCollisions(player);
 
-      // Actualizar nivel
+      // Keep level meta in sync
       const level = getPlayerLevel(player.size);
       player.levelKey = level.key;
       player.levelName = level.name;
     });
 
-    // Actualizar bots
+    // Update bots
     updateBots(dt);
 
-    // Colisiones jugador vs jugador
+    // Player vs Player collisions
     const removedPlayers = checkPlayerCollisions(io);
 
-    // Construir delta (solo cambios)
+    // ── LAZY hazards activation:
+    // Activate ONLY when any player is inside your L1-Sub3 (27–39) or L1-Sub4 (40–119).
+    let anyInHazardBands = false;
+    for (const p of Object.values(gameState.players)) {
+      if (!p || !p.isAlive) continue;
+      if (p.size >= HAZARD_RANGE.min && p.size <= HAZARD_RANGE.max) {
+        anyInHazardBands = true;
+        break;
+      }
+    }
+
+    if (anyInHazardBands && !areHazardsActive()) {
+      enableHazardsForLevel3();
+      console.log('☄️ Hazards ENABLED (player in Sub3/Sub4 band).');
+    } else if (!anyInHazardBands && areHazardsActive()) {
+      disableHazards();
+      console.log('☄️ Hazards DISABLED (no players in Sub3/Sub4).');
+    }
+
+    // Tick hazards (does nothing if inactive)
+    updateHazards(dt, io);
+
+    // Build delta
     const delta = {
       players: {},
       orbs: [],
       removedOrbs: [],
-      removedPlayers: []
+      removedPlayers: [],
+      hazards: getHazardsSnapshot() // { blackHole, whiteHole, asteroids }
     };
 
-    // Jugadores cambiados/nuevos
+    // Changed/new players
     for (const [id, player] of Object.entries(gameState.players)) {
       const prev = lastState.players[id];
-
       if (
         !prev ||
         prev.x !== player.x ||
@@ -153,81 +204,78 @@ function gameLoop() {
       }
     }
 
-    // Jugadores removidos
+    // Removed players
     for (const id of Object.keys(lastState.players)) {
       if (!gameState.players[id]) {
         delta.removedPlayers.push(id);
       }
     }
 
-    // Orbes añadidos / removidos
-    const lastOrbMap = new Map(lastState.orbs.map(o => [o.id, o]));
-    const currOrbMap = new Map(gameState.orbs.map(o => [o.id, o]));
+    // Added/removed orbs
+    const lastOrbMap = new Map(lastState.orbs.map((o) => [o.id, o]));
+    const currOrbMap = new Map(gameState.orbs.map((o) => [o.id, o]));
 
     for (const orb of gameState.orbs) {
-      if (!lastOrbMap.get(orb.id)) {
-        delta.orbs.push({ ...orb });
-      }
+      if (!lastOrbMap.get(orb.id)) delta.orbs.push({ ...orb });
     }
-
     for (const orb of lastState.orbs) {
-      if (!currOrbMap.has(orb.id)) {
-        delta.removedOrbs.push(orb.id);
-      }
+      if (!currOrbMap.has(orb.id)) delta.removedOrbs.push(orb.id);
     }
 
-    // Añadir jugadores removidos por colisión
+    // Players removed due to collisions
     delta.removedPlayers.push(...removedPlayers);
 
-    // Enviar delta si hay cambios
+    // (Optional) hazards change signature (not required to emit)
+    const hz = delta.hazards || { asteroids: [] };
+    const hazardsSig =
+      `${hz.blackHole ? 1 : 0}:${hz.whiteHole ? 1 : 0}:${(hz.asteroids && hz.asteroids.length) || 0}`;
+    const hazardsChanged = hazardsSig !== lastHazardsSig;
+    if (hazardsChanged) lastHazardsSig = hazardsSig;
+
+    // Emit if anything meaningful changed
     if (
       Object.keys(delta.players).length ||
       delta.orbs.length ||
       delta.removedOrbs.length ||
-      delta.removedPlayers.length
+      delta.removedPlayers.length ||
+      (hz && (hz.asteroids?.length || hz.blackHole || hz.whiteHole))
     ) {
       io.emit('gameState', delta);
     }
 
-    // Actualizar último estado (deep copy)
+    // Sync lastState (deep copy)
     lastState.players = JSON.parse(JSON.stringify(gameState.players));
     lastState.orbs = JSON.parse(JSON.stringify(gameState.orbs));
 
-    // Remover jugadores muertos
-    removedPlayers.forEach(id => {
+    // Remove dead human players after notifying them
+    removedPlayers.forEach((id) => {
       if (gameState.players[id] && !gameState.players[id].isBot) {
         delete gameState.players[id];
         gameState.humanCount = Math.max(0, gameState.humanCount - 1);
       }
     });
-
   } catch (err) {
     console.error('❌ Error in game loop:', err.message);
     console.error(err);
   }
 
-  // Programar siguiente iteración
+  // Schedule next tick
   const elapsed = Date.now() - start;
   setTimeout(gameLoop, Math.max(0, GAME_CONFIG.UPDATE_INTERVAL - elapsed));
 }
 
-// Inicializar bots
-initializeBots();
-
-// Iniciar game loop
+// ─────────────────────────────────────────────────────────────────────────────
+// Startup
+// ─────────────────────────────────────────────────────────────────────────────
+initializeBots(); // bots are back 🙂
 gameLoop();
 
-// Iniciar servidor
 server.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════');
-  console.log(`🚀 AstroIo Server Started`);
+  console.log('🚀 AstroIo Server Started');
   console.log(`📍 URL: http://localhost:${PORT}`);
   console.log(`🌍 Environment: ${NODE_ENV}`);
-
-  if (NODE_ENV === 'development') {
-    console.log(`👤 Developer: ${USER}`);
-  }
-
+  if (NODE_ENV === 'development') console.log(`👤 Developer: ${USER}`);
   console.log(`🎮 Max Players: ${GAME_CONFIG.MAX_PLAYERS}`);
   console.log(`🌎 World Size: ${GAME_CONFIG.WORLD_WIDTH}x${GAME_CONFIG.WORLD_HEIGHT}`);
   console.log(`⚫ Orbs: ${GAME_CONFIG.NUM_ORBS}`);
