@@ -11,6 +11,7 @@ class AstroIoGame {
     this.renderer = null;
     this.camera = null;
     this.ui = null;
+    this.cardsManager = null; // ← NEW
     
     this.myPlayerId = null;
     this.myPlayerName = '';
@@ -21,9 +22,10 @@ class AstroIoGame {
     
     this.clientGameState = {
       players: {},
-      orbs: new Map()
+      orbs: new Map(),
+      hazards: { blackHole: null, whiteHole: null, asteroids: [] }  // NEW
     };
-    
+
     this.lastLevelTier = -1;
     this.isTransition = false;
     
@@ -38,6 +40,8 @@ class AstroIoGame {
     this.QT_TRIGGER_THRESHOLD = 0.95; // ~5% chance
     this.QT_MIN_R = 30;               // min radius around current pos
     this._qtTimer = null;
+    this._hazardsPermanentlyDisabled = false;
+    this._hazardRange = this._computeHazardRange();
   }
 
   /**
@@ -47,11 +51,28 @@ class AstroIoGame {
     console.log('🎮 Initializing AstroIo (Unified System)...');
     
     this.ui = new GameUI();
+    this.cardsManager = new FloatingCardsManager(); // ← NEW
     window.game = this; // Exponer globalmente
     
     // ========== NUEVO: Registrar niveles personalizados ==========
     this.registerCustomLevels();
     // =============================================================
+  }
+
+  // Compute once from LEVELS_CONFIG: union of (level 1, sublevel 3) and (level 1, sublevel 4)
+  _computeHazardRange() {
+    const cfg = (typeof window !== 'undefined' ? window.LEVELS_CONFIG : null) || [];
+    const s3 = cfg.find(e => e.level === 1 && e.sublevel === 3);
+    const s4 = cfg.find(e => e.level === 1 && e.sublevel === 4);
+    if (s3 && s4) {
+      return { min: Math.min(s3.min, s4.min), max: Math.max(s3.max, s4.max) };
+    }
+    const c2 = cfg.find(e => e.clientLevel === 2);
+    const c3 = cfg.find(e => e.clientLevel === 3);
+    if (c2 && c3) {
+      return { min: Math.min(c2.min, c3.min), max: Math.max(c2.max, c3.max) };
+    }
+    return { min: 27, max: 119 }; // fallback only
   }
 
   _ensureLevelTitleBanner() {
@@ -104,7 +125,10 @@ class AstroIoGame {
    */
   registerCustomLevels() {
     const levelRegistry = [
-      { level: 2, instance: window.ThirdSolarLevel,  name: 'Solar 3' },
+      // ThirdSolarLevel must be active for level 2 *and* 3 so you see hazards
+      { level: 3, instance: window.ThirdSolarLevel,  name: 'Solar 3B' },
+      { level: 2, instance: window.ThirdSolarLevel,  name: 'Solar 3A' },
+
       { level: 1, instance: window.SecondSolarLevel, name: 'Solar 2' },
       { level: 0, instance: window.FirstSolarLevel,  name: 'Solar 1' }
     ];
@@ -369,6 +393,20 @@ class AstroIoGame {
     });
 
     this.socket.setName(this.myPlayerName);
+
+    this.socket.on('whiteHoleUsed', (data) => {
+    // small flash
+    try {
+      if (this.renderer?.transitionOverlay && this.renderer?.app) {
+        const o = this.renderer.transitionOverlay;
+        const w = this.renderer.app.screen.width;
+        const h = this.renderer.app.screen.height;
+        o.clear(); o.beginFill(0x66ccff, 0.25); o.drawRect(0,0,w,h); o.endFill();
+        setTimeout(() => o.clear(), 120);
+      }
+    } catch {}
+  });
+
   }
 
   // setupMouseInput() {
@@ -474,6 +512,28 @@ class AstroIoGame {
         });
       }
 
+      if (delta.hazards) {
+        // Copy incoming hazards
+        const hz = { ...delta.hazards };
+
+        // Decide if hazards should be allowed for *me* right now
+        const me = this.clientGameState.players[this.myPlayerId];
+        const r = this._hazardRange;
+        const inBand = me && r && Number.isFinite(r.min) && Number.isFinite(r.max)
+          ? (me.size >= r.min && me.size <= r.max)
+          : false;
+        const allow = inBand && !this._hazardsPermanentlyDisabled;
+
+        // If not allowed, strip them so there’s no “hidden” black hole anywhere
+        if (!allow) {
+          hz.blackHole = null;
+          hz.whiteHole = null;
+          hz.asteroids = [];
+        }
+
+        this.clientGameState.hazards = hz;
+      }
+
       this.render();
     } catch (error) {
       console.error('❌ Error updating game state:', error);
@@ -513,7 +573,8 @@ class AstroIoGame {
 
     if (this.myPlayerId && this.clientGameState.players[this.myPlayerId]) {
       const myPlayer = this.clientGameState.players[this.myPlayerId];
-      
+
+      // (existing camera + UI updates stay the same)
       this.camera.update(
         myPlayer,
         this.renderer.app.screen.width,
@@ -523,14 +584,25 @@ class AstroIoGame {
 
       this.renderer.updateStarParallax(this.camera.x, this.camera.y);
 
+      // >>> NEW: decide if hazards should be visible for me and draw them
+      const r = this._hazardRange;
+      const inBand = r && Number.isFinite(r.min) && Number.isFinite(r.max)
+        ? (myPlayer.size >= r.min && myPlayer.size <= r.max)
+        : false;
+      const allow = inBand && !this._hazardsPermanentlyDisabled;
+
+      this.renderer.renderHazards(this.clientGameState.hazards, allow);
+      // <<< NEW
+
+      // (existing HUD / scale / transitions / minimap code continues)
       this.ui.updateHUD(myPlayer, Object.keys(this.clientGameState.players).length);
       this.ui.updateScalePanel(myPlayer.size);
-      
       this.finalSize = Math.floor(myPlayer.size);
-
-      // ========== NUEVO: Sistema de transición mejorado ==========
       this.maybeRunLevelTransition(myPlayer.size);
-      // ===========================================================
+
+      if (this.cardsManager) {
+        this.cardsManager.checkAndShowCard(myPlayer.size); // Using size as points for now
+      }
 
       this.renderer.drawMinimap(
         this.clientGameState.players,
@@ -540,6 +612,9 @@ class AstroIoGame {
         this.worldHeight
       );
     } else {
+      // Clear hazards layer when we don't have a focused player yet
+      this.renderer.renderHazards(this.clientGameState.hazards, false);
+
       this.renderer.drawMinimap(
         this.clientGameState.players,
         this.clientGameState.orbs,
@@ -570,6 +645,17 @@ class AstroIoGame {
       default: return { min: 1,  max: 200 };
     }
   }
+
+  // --- Helpers for hazard bands (use getBoundsForLevel so nothing is hard-coded) ---
+  _inHazardLevels(levelIndex) {
+    // Hazards visible during Level 1 Sub-3 AND Sub-4
+    return levelIndex === 2 || levelIndex === 3;
+  }
+  _getHazardBandMax() {
+    const b = this.getBoundsForLevel(3); // Sublevel 4 "upper" band
+    return (b && Number.isFinite(b.max)) ? b.max : 119; // safe fallback
+  }
+
 
   // Big, animated level title banner (replaces your existing _showLevelBanner)
   _showLevelBanner(text, color = '#00FFAA', opts = {}) {
@@ -739,6 +825,16 @@ class AstroIoGame {
     const levelInfo = this.getLevelInfo(size);
     const currentLevel = levelInfo.level;
 
+    // 2) Update per-player hazard visibility gates from config
+    if (size > this._hazardRange.max) {
+      this._hazardsPermanentlyDisabled = true;
+    }
+    const third = this.customLevels[2]; // same instance also registered as level 3
+    if (third) {
+      const inBand = size >= this._hazardRange.min && size <= this._hazardRange.max;
+      third._shouldRenderHazards = inBand && !this._hazardsPermanentlyDisabled;
+    }
+
     // 2) If we crossed a band and we're not already animating, switch level
     if (currentLevel !== this.lastLevelTier && !this.isTransition) {
       const oldLevel = this.lastLevelTier;
@@ -762,7 +858,7 @@ class AstroIoGame {
         const band = nmBands[currentLevel] || nmBands[0];
         if (this.ui?.setScaleRule) {
           this.ui.setScaleRule({
-            name: band.name,
+            name: levelInfo.name || band.name,
             nmMin: band.nmMin,
             nmMax: band.nmMax
           });

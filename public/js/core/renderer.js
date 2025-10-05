@@ -25,6 +25,9 @@ class GameRenderer {
     this.orbSprites = {}; // ← CHANGED from orbGraphics
     this.elementTexturesLoaded = false; // ← NEW
 
+    // Hazards
+    this.hazardsGfx = null; // ← NEW: capa para hoyos/asteroides
+
     // Minimap bits
     this.minimapCanvas = null;
     this.minimapCtx = null;
@@ -83,7 +86,14 @@ class GameRenderer {
 
       // Crear contenedor del mundo
       this.worldContainer = new PIXI.Container();
+      this.worldContainer.sortableChildren = true;
       this.app.stage.addChild(this.worldContainer);
+
+      // NEW: capa de hazards (entre sprites y nombres)
+      this.hazardsGfx = new PIXI.Graphics();
+      this.hazardsGfx.zIndex = 30;     // players ~20, hazards 30, names ~40
+      this.hazardsGfx.visible = false; // se controla por frame
+      this.worldContainer.addChild(this.hazardsGfx);
 
       // Overlay de transición
       this.transitionOverlay = new PIXI.Graphics();
@@ -672,6 +682,7 @@ class GameRenderer {
         sprite = new PIXI.Sprite(texture);
         sprite.anchor.set(0.5);
         this.worldContainer.addChild(sprite);
+        sprite.zIndex = 20;
         this.playerSprites[player.id] = sprite;
         sprite._currentTextureKey = currentTextureKey;
         
@@ -699,6 +710,7 @@ class GameRenderer {
         });
         nameText.anchor.set(0.5);
         this.worldContainer.addChild(nameText);
+        nameText.zIndex = 40;
         this.playerNameTexts[player.id] = nameText;
       }
 
@@ -806,6 +818,47 @@ class GameRenderer {
   }
 
   /**
+   * NEW: Renderizar hazards (hoyos y asteroides) en la escena principal
+   */
+  renderHazards(hazards, visible = true) {
+    if (!this.hazardsGfx) return;
+    const g = this.hazardsGfx;
+    g.visible = !!visible;
+    g.clear();
+    if (!visible || !hazards) return;
+
+    const { blackHole, whiteHole, asteroids } = hazards;
+
+    // Asteroides
+    if (Array.isArray(asteroids) && asteroids.length) {
+      g.lineStyle(1, 0xffffff, 0.6);
+      g.beginFill(0x888888, 0.95);
+      for (const a of asteroids) g.drawCircle(a.x, a.y, a.r);
+      g.endFill();
+    }
+
+    // Black hole
+    if (blackHole) {
+      g.lineStyle(4, 0xff3333, 0.95);
+      g.beginFill(0x000000, 1.0);
+      g.drawCircle(blackHole.x, blackHole.y, blackHole.r);
+      g.endFill();
+    }
+
+    // White hole
+    if (whiteHole) {
+      g.lineStyle(3, 0xffffff, 0.95);
+      g.beginFill(0xffffff, 0.2);
+      g.drawCircle(whiteHole.x, whiteHole.y, whiteHole.r);
+      g.endFill();
+
+      g.beginFill(0x66ccff, 0.75);
+      g.drawCircle(whiteHole.x, whiteHole.y, Math.max(4, whiteHole.r * 0.5));
+      g.endFill();
+    }
+  }
+
+  /**
    * Limpiar gráfico de jugador
    */
   removePlayer(id) {
@@ -837,9 +890,6 @@ class GameRenderer {
     }
   }
 
-  /**
-   * Dibujar minimapa (jugadores, orbes y viewport)
-   */
   /**
    * Dibujar minimapa (jugadores y orbes, SIN rectángulo de viewport)
    */
@@ -893,7 +943,49 @@ class GameRenderer {
       ctx.fill();
     });
 
-    // >>> No se dibuja el rectángulo de viewport <<<
+    // Hazards on minimap
+    try {
+      const hz = (window.game && window.game.clientGameState && window.game.clientGameState.hazards) || null;
+      const me = window.game && window.game.clientGameState && window.game.clientGameState.players[window.game.myPlayerId];
+
+      const r = window.game && window.game._hazardRange;
+      const hasBand = r && Number.isFinite(r.min) && Number.isFinite(r.max);
+      const inBand = !!(me && hasBand && me.size >= r.min && me.size <= r.max);
+      const blocked = window.game && window.game._hazardsPermanentlyDisabled;
+
+      if (hz && inBand && !blocked) {
+        // Asteroids: grey dots
+        if (Array.isArray(hz.asteroids)) {
+          ctx.fillStyle = '#999999';
+          hz.asteroids.forEach(a => {
+            const rr = Math.max(1, Math.min(2, a.r * sx * 0.2));
+            ctx.beginPath();
+            ctx.arc(a.x * sx, a.y * sy, rr, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+        // Black hole
+        if (hz.blackHole) {
+          ctx.strokeStyle = '#ff3333';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(hz.blackHole.x * sx, hz.blackHole.y * sy, 6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // White hole
+        if (hz.whiteHole) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(hz.whiteHole.x * sx, hz.whiteHole.y * sy, 6, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#66ccff';
+          ctx.beginPath();
+          ctx.arc(hz.whiteHole.x * sx, hz.whiteHole.y * sy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } catch (e) {}
   }
 
   /**
