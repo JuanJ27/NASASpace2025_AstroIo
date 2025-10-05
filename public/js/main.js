@@ -22,7 +22,8 @@ class AstroIoGame {
     this.clientGameState = {
       players: {},
       orbs: new Map(),
-      hazards: { blackHole: null, whiteHole: null, asteroids: [] }  // NEW
+      hazards: { blackHole: null, whiteHole: null, asteroids: [] },  // Solar hazards
+      galaxyHazards: { active: false } // Galaxy hazards (orbital black hole)
     };
 
     this.lastLevelTier = -1;
@@ -50,6 +51,13 @@ class AstroIoGame {
     console.log('🎮 Initializing AstroIo (Unified System)...');
     
     this.ui = new GameUI();
+    
+    // Inicializar FloatingCardsManager si está disponible
+    if (typeof FloatingCardsManager !== 'undefined') {
+      this.cardsManager = new FloatingCardsManager();
+      console.log('✅ FloatingCardsManager initialized');
+    }
+    
     window.game = this; // Exponer globalmente
     
     // ========== NUEVO: Registrar niveles personalizados ==========
@@ -123,6 +131,9 @@ class AstroIoGame {
    */
   registerCustomLevels() {
     const levelRegistry = [
+      // Galaxy Level (120-159) with orbital hazards
+      { level: 4, instance: window.GalaxyLevel,      name: 'Galaxy Level' },
+      
       // ThirdSolarLevel must be active for level 2 *and* 3 so you see hazards
       { level: 3, instance: window.ThirdSolarLevel,  name: 'Solar 3B' },
       { level: 2, instance: window.ThirdSolarLevel,  name: 'Solar 3A' },
@@ -131,7 +142,12 @@ class AstroIoGame {
       { level: 0, instance: window.FirstSolarLevel,  name: 'Solar 1' }
     ];
     levelRegistry.forEach(({ level, instance, name }) => {
-      if (instance) this.customLevels[level] = instance;
+      if (instance) {
+        this.customLevels[level] = instance;
+        console.log(`✅ Registered level ${level}: ${name}`, instance);
+      } else {
+        console.warn(`⚠️ Failed to register level ${level}: ${name} (instance not found)`);
+      }
     });
   }
 
@@ -469,6 +485,10 @@ class AstroIoGame {
         this.clientGameState.hazards = delta.hazards;
       }
 
+      if (delta.galaxyHazards) {
+        this.clientGameState.galaxyHazards = delta.galaxyHazards;
+      }
+
 
       this.render();
     } catch (error) {
@@ -533,6 +553,12 @@ class AstroIoGame {
       // (existing HUD / scale / transitions / minimap code continues)
       this.ui.updateHUD(myPlayer, Object.keys(this.clientGameState.players).length);
       this.ui.updateScalePanel(myPlayer.size);
+      
+      // Check floating cards (if FloatingCardsManager is available)
+      if (this.cardsManager) {
+        this.cardsManager.checkAndShowCard(myPlayer.size);
+      }
+      
       this.finalSize = Math.floor(myPlayer.size);
       this.maybeRunLevelTransition(myPlayer.size);
 
