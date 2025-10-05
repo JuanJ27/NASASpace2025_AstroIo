@@ -11,6 +11,7 @@ class AstroIoGame {
     this.renderer = null;
     this.camera = null;
     this.ui = null;
+    this.cardsManager = null; // ← NEW
     
     this.myPlayerId = null;
     this.myPlayerName = '';
@@ -51,13 +52,7 @@ class AstroIoGame {
     console.log('🎮 Initializing AstroIo (Unified System)...');
     
     this.ui = new GameUI();
-    
-    // Inicializar FloatingCardsManager si está disponible
-    if (typeof FloatingCardsManager !== 'undefined') {
-      this.cardsManager = new FloatingCardsManager();
-      console.log('✅ FloatingCardsManager initialized');
-    }
-    
+    this.cardsManager = new FloatingCardsManager(); // ← NEW
     window.game = this; // Exponer globalmente
     
     // ========== NUEVO: Registrar niveles personalizados ==========
@@ -236,6 +231,51 @@ class AstroIoGame {
     // Nivel 3: Exotic Galaxy
     if (!loader.resources['exotic_galaxy']) {
       loader.add('exotic_galaxy', '/assets/exotic_galaxy.webp');
+    }
+
+    // ========== FONDOS DE NIVEL ==========
+    // Meteoros para Nivel 1
+    if (!loader.resources['meteoro1']) {
+      loader.add('meteoro1', '/assets/meteoro1.webp');
+    }
+    if (!loader.resources['meteoro2']) {
+      loader.add('meteoro2', '/assets/meteoro2.webp');
+    }
+    if (!loader.resources['meteoro_azul']) {
+      loader.add('meteoro_azul', '/assets/meteoro_azul.webp');
+    }
+
+    // Galaxias para fondo de Nivel 2 (no usadas como elementos)
+    if (!loader.resources['galaxia_04']) {
+      loader.add('galaxia_04', '/assets/galaxia_04.webp');
+    }
+    if (!loader.resources['galaxia_05']) {
+      loader.add('galaxia_05', '/assets/galaxia_05.webp');
+    }
+    if (!loader.resources['galaxia_06']) {
+      loader.add('galaxia_06', '/assets/galaxia_06.webp');
+    }
+    if (!loader.resources['galaxia_agujero']) {
+      loader.add('galaxia_agujero', '/assets/galaxia_agujero.webp');
+    }
+    if (!loader.resources['brazos_azules']) {
+      loader.add('brazos_azules', '/assets/brazos_azules.webp');
+    }
+
+    // Agujeros negros para Nivel 2
+    if (!loader.resources['agujero_negro1']) {
+      loader.add('agujero_negro1', '/assets/agujero_negro1.webp');
+    }
+    if (!loader.resources['agujero_negro2']) {
+      loader.add('agujero_negro2', '/assets/agujero_negro2.webp');
+    }
+    if (!loader.resources['agujero_negro3']) {
+      loader.add('agujero_negro3', '/assets/agujero_negro3.webp');
+    }
+
+    // Imagen final para Nivel 3
+    if (!loader.resources['final']) {
+      loader.add('final', '/assets/final.webp');
     }
 
     // Cargar texturas de elementos
@@ -482,13 +522,26 @@ class AstroIoGame {
       }
 
       if (delta.hazards) {
-        this.clientGameState.hazards = delta.hazards;
-      }
+        // Copy incoming hazards
+        const hz = { ...delta.hazards };
 
-      if (delta.galaxyHazards) {
-        this.clientGameState.galaxyHazards = delta.galaxyHazards;
-      }
+        // Decide if hazards should be allowed for *me* right now
+        const me = this.clientGameState.players[this.myPlayerId];
+        const r = this._hazardRange;
+        const inBand = me && r && Number.isFinite(r.min) && Number.isFinite(r.max)
+          ? (me.size >= r.min && me.size <= r.max)
+          : false;
+        const allow = inBand && !this._hazardsPermanentlyDisabled;
 
+        // If not allowed, strip them so there’s no “hidden” black hole anywhere
+        if (!allow) {
+          hz.blackHole = null;
+          hz.whiteHole = null;
+          hz.asteroids = [];
+        }
+
+        this.clientGameState.hazards = hz;
+      }
 
       this.render();
     } catch (error) {
@@ -561,6 +614,10 @@ class AstroIoGame {
       
       this.finalSize = Math.floor(myPlayer.size);
       this.maybeRunLevelTransition(myPlayer.size);
+
+      if (this.cardsManager) {
+        this.cardsManager.checkAndShowCard(myPlayer.size); // Using size as points for now
+      }
 
       this.renderer.drawMinimap(
         this.clientGameState.players,
@@ -844,6 +901,28 @@ class AstroIoGame {
         topPct: 30,
         border: true
       });
+
+      // ========== TRANSICIÓN DE FONDOS ==========
+      // Determinar el fondo visual según el nivel principal
+      let backgroundLevel = 1;
+      if (levelInfo.mainLevel === 2) {
+        backgroundLevel = 2;
+      } else if (levelInfo.mainLevel === 3) {
+        backgroundLevel = 3;
+      }
+      
+      // Transicionar al nuevo fondo
+      if (this.renderer && this.renderer.transitionToLevel) {
+        this.renderer.transitionToLevel(backgroundLevel, size);
+      }
+      
+      // Si llegamos al final del juego (size > 200), mostrar pantalla final
+      if (size >= 200 && this.renderer && this.renderer.showFinalScreen) {
+        setTimeout(() => {
+          this.renderer.showFinalScreen();
+        }, 3000); // Esperar 3 segundos antes de mostrar la pantalla final
+      }
+      // =========================================
 
       // Keep your existing zoom transition & quantum toggle lines as-is
       this.runZoomTransition(transitionColor);
