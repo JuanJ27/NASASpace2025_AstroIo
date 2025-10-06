@@ -103,7 +103,7 @@ const USER = process.env.USER || '';
 // Routes
 // ─────────────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-if (NODE_ENV === 'development') {
+if (NODE_ENV === '') {
 console.log('••••• Entrando en modo desarrollo •••• ' + USER);
 
 const devFiles = {
