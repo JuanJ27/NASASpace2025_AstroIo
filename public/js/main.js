@@ -35,6 +35,10 @@ class AstroIoGame {
     this.customLevels = {}; // Registro de niveles personalizados
     // ==============================================================
 
+    // ⭐ FLAGS PARA EVENTOS ESPECIALES
+    this._supercumuloBotsRequested = false; // Flag para evitar spawning múltiple
+    this._gravitationalPullActive = false; // ⭐ NUEVO: Flag para evento gravitacional
+
     // ===== Quantum Tunnel (client emitter) =====
     this.QT_INTERVAL_MS = 1000;       // check once per second
     this.QT_TRIGGER_THRESHOLD = 0.95; // ~5% chance
@@ -219,7 +223,7 @@ class AstroIoGame {
       loader.add('andromeda', '/assets/andromeda.webp');
     }
     
-    // Nivel 3: Exotic Galaxy
+// ⭐ AGREGAR ESTAS TEXTURAS PARA LOS BOTS:
     if (!loader.resources['exotic_galaxy']) {
       loader.add('exotic_galaxy', '/assets/exotic_galaxy.webp');
     }
@@ -392,52 +396,81 @@ class AstroIoGame {
       }
     });
 
+    // ========== Escuchar respuesta de spawn de bots ==========
+    this.socket.on('supercumuloBotsSpawned', (data) => {
+      if (data.success) {
+        console.log(`✨ ${data.message}`);
+        console.log('📍 Bots spawned:', data.bots);
+        console.log('📍 Corner:', data.corner);
+        
+        // Mostrar mensaje en pantalla
+        if (this.ui && typeof this.ui.showError === 'function') {
+          this.ui.showError(`🌌 4 Cluster Bots appeared at ${data.corner.name}!`);
+          setTimeout(() => this.ui.showError(''), 5000);
+        }
+      } else {
+        console.error('❌ Failed to spawn Supercumulo bots:', data.error);
+      }
+    });
+    // ==========================================================
+
+    // ⭐ NUEVO: Escuchar evento de atracción gravitacional
+    this.socket.on('gravitationalPull', (data) => {
+      console.log('🌀 GRAVITATIONAL PULL EVENT!', data);
+      this._gravitationalPullActive = true;
+      
+      // Mostrar mensaje dramático
+      if (this.ui && typeof this.ui.showError === 'function') {
+        this.ui.showError(data.message);
+      }
+
+      // Desactivar después de la duración y mostrar mensaje de congelación
+      setTimeout(() => {
+        this._gravitationalPullActive = false;
+        if (this.ui && typeof this.ui.showError === 'function') {
+          this.ui.showError('🔒 Systems frozen. Cannot move.');
+        }
+      }, data.duration);
+    });
+    // ==========================================================
+
     this.socket.on('disconnect', () => {
       console.warn('⚠️ Disconnected from server');
     });
 
     this.socket.setName(this.myPlayerName);
-
-    this.socket.on('whiteHoleUsed', (data) => {
-    // small flash
-    try {
-      if (this.renderer?.transitionOverlay && this.renderer?.app) {
-        const o = this.renderer.transitionOverlay;
-        const w = this.renderer.app.screen.width;
-        const h = this.renderer.app.screen.height;
-        o.clear(); o.beginFill(0x66ccff, 0.25); o.drawRect(0,0,w,h); o.endFill();
-        setTimeout(() => o.clear(), 120);
-      }
-    } catch {}
-  });
-
   }
 
-  // setupMouseInput() {
-  //   document.addEventListener('mousemove', (event) => {
-  //     if (this.socket && this.isGameActive && this.myPlayerId && this.camera) {
-  //       const worldPos = this.camera.screenToWorld(event.clientX, event.clientY);
-  //       this.socket.sendMove(worldPos.x, worldPos.y);
-  //     }
-  //   });
-  // }
   setupMouseInput() {
-    // Send at most ~60 fps (like a game loop), not per DOM event.
     let pending = null;
     let sending = false;
 
     const sendLoop = () => {
       if (!sending) return;
+      
+      // ⭐ NUEVO: Bloquear input durante evento gravitacional
+      if (this._gravitationalPullActive) {
+        pending = null;
+        requestAnimationFrame(sendLoop);
+        return;
+      }
+
       if (pending && this.socket && this.isGameActive && this.myPlayerId && this.camera) {
         const { x, y } = pending;
         this.socket.sendMove(x, y);
-        pending = null; // sent the latest
+        pending = null;
       }
       requestAnimationFrame(sendLoop);
     };
 
     document.addEventListener('mousemove', (event) => {
       if (!this.camera) return;
+      
+      // ⭐ NUEVO: Ignorar movimientos durante evento gravitacional
+      if (this._gravitationalPullActive) {
+        return;
+      }
+
       const worldPos = this.camera.screenToWorld(event.clientX, event.clientY);
       pending = worldPos;
       if (!sending) {
@@ -461,6 +494,14 @@ class AstroIoGame {
 
     const sendLoop = () => {
       if (!sending) return;
+      
+      // ⭐ NUEVO: Bloquear input táctil durante evento gravitacional
+      if (this._gravitationalPullActive) {
+        pending = null;
+        requestAnimationFrame(sendLoop);
+        return;
+      }
+
       if (pending && this.socket && this.isGameActive && this.myPlayerId && this.camera) {
         const { x, y } = pending;
         this.socket.sendMove(x, y);
@@ -471,6 +512,12 @@ class AstroIoGame {
 
     document.addEventListener('touchmove', (event) => {
       if (!this.camera) return;
+      
+      // ⭐ NUEVO: Ignorar toques durante evento gravitacional
+      if (this._gravitationalPullActive) {
+        return;
+      }
+
       const t = event.touches[0];
       pending = this.camera.screenToWorld(t.clientX, t.clientY);
       if (!sending) {
@@ -602,6 +649,25 @@ class AstroIoGame {
       this.ui.updateHUD(myPlayer, Object.keys(this.clientGameState.players).length);
       this.ui.updateScalePanel(myPlayer.size);
       this.finalSize = Math.floor(myPlayer.size);
+
+      // ⭐ AGREGAR ESTE BLOQUE COMPLETO AQUÍ: lo puso darwin
+      // ========== Detectar cuando llega a tamaño 200 (Supercúmulo) ==========
+      if (myPlayer.size >= 200 && !this._supercumuloBotsRequested) {
+        console.log('🌌 Reached size 200! Requesting Supercumulo bots...');
+        this._supercumuloBotsRequested = true;
+        
+        // Enviar evento al servidor
+        if (this.socket && this.socket.socket) {
+          this.socket.socket.emit('reachedSupercumulo', {
+            size: myPlayer.size,
+            x: myPlayer.x,
+            y: myPlayer.y
+          });
+        }
+      }
+      // ======================================================================
+
+      // ========== NUEVO: Sistema de transición mejorado ==========
       this.maybeRunLevelTransition(myPlayer.size);
 
       if (this.cardsManager) {

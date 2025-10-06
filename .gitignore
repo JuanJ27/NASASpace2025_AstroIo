@@ -28,6 +28,7 @@ config.local.js
 /dist/
 /out/
 /coverage/
+/public/js/main_darwin.js
 *.min.js
 *.min.css
 

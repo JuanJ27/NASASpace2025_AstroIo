@@ -14,6 +14,7 @@ const { updatePlayerPosition } = require('./server/core/physics');
 const { checkOrbCollisions, checkPlayerCollisions } = require('./server/core/collisions');
 const { initializeBots, updateBots } = require('./server/core/bots');
 const { getPlayerLevel } = require('./server/core/player');
+const { updateGravitationalEvent } = require('./server/core/gravitationalEvent'); // ⭐ NUEVO: IMPORTAR
 
 // Hazards (server authoritative) — LAZY activation only
 const {
@@ -150,24 +151,59 @@ frameCount = 0;
 fpsUpdateTime = start;
 }
 
-// Update human players
-Object.values(gameState.players).forEach((player) => {
-if (player.isBot) return;
+    // ⭐ NUEVO: Actualizar evento gravitacional PRIMERO (antes de todo lo demás)
+    updateGravitationalEvent(dt / 1000); // Convertir ms a segundos
 
-updatePlayerPosition(player, dt);
-checkOrbCollisions(player);
+    // ⭐ MODIFICADO: Solo actualizar física normal si NO hay evento gravitacional activo
+    let removedPlayers = [];
+    
+    if (!gameState.gravitationalEvent || !gameState.gravitationalEvent.active) {
+      // Actualizar jugadores humanos (física normal)
+      Object.values(gameState.players).forEach(player => {
+          if (player.isStaticBot) {
+            return;
+          }
 
-// Keep level meta in sync
-const level = getPlayerLevel(player.size);
-player.levelKey = level.key;
-player.levelName = level.name;
-});
+          if (!player.isAlive) {
+            return;
+          }
 
-// Update bots
-updateBots(dt);
+          // ⭐⭐⭐ NUEVO: No actualizar física de jugadores congelados ⭐⭐⭐
+          if (player._frozenByGravity) {
+            // Solo actualizar nivel, sin movimiento
+            const level = getPlayerLevel(player.size);
+            player.levelKey = level.key;
+            player.levelName = level.name;
+            return;
+          }
+          // ⭐⭐⭐ FIN DEL CÓDIGO NUEVO ⭐⭐⭐
 
-// Player vs Player collisions
-const removedPlayers = checkPlayerCollisions(io);
+        updatePlayerPosition(player, dt);
+        checkOrbCollisions(player);
+
+        // Actualizar nivel
+        const level = getPlayerLevel(player.size);
+        player.levelKey = level.key;
+        player.levelName = level.name;
+      });
+
+      // Actualizar bots (física normal)
+      updateBots(dt);
+
+      // Colisiones jugador vs jugador (solo si no hay evento)
+      removedPlayers = checkPlayerCollisions(io);
+    } else {
+      // ⭐ NUEVO: Durante evento gravitacional, solo actualizar niveles (sin física)
+      Object.values(gameState.players).forEach(player => {
+        if (player.isBot) return;
+        
+        // Solo actualizar nivel (sin física ni movimiento)
+        const level = getPlayerLevel(player.size);
+        player.levelKey = level.key;
+        player.levelName = level.name;
+      });
+      // No hay colisiones ni bots durante el evento
+    }
 
 // ── LAZY hazards activation:
 // Activate ONLY when any player is inside your L1-Sub3 (27–39) or L1-Sub4 (40–119).

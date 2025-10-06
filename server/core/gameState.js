@@ -30,6 +30,16 @@ const gameState = {
   orbs: [],
   lastUpdate: Date.now(),
   humanCount: 0,
+  _botsDisabled: false, // ⭐⭐⭐ AGREGAR ESTA LÍNEA ⭐⭐⭐
+  // ⭐ NUEVO: Estado del evento gravitacional
+  gravitationalEvent: {
+    active: false,
+    center: { x: 0, y: 0 },
+    startTime: 0,
+    duration: 0,
+    attractionRadius: 0,
+    attractionSpeed: 0
+  },
   // add inside gameState (alongside players, orbs, etc.)
   hazards: {
     level3Initialized: false,

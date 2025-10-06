@@ -1,5 +1,6 @@
 const { gameState, GAME_CONFIG } = require('../core/gameState');
 const { createPlayer } = require('../core/player');
+const { spawnSupercumuloBots } = require('../core/bots'); // ⭐ IMPORTAR NUEVA FUNCIÓN
 
 // helper clamp (top of file or reuse existing one)
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -40,7 +41,7 @@ function handleConnection(io, socket) {
     console.log(`Player joined: ${playerName} (${socket.id})`);
   });
 
-  // inside io.on('connection', socket => { ... }) or your connection handler:
+  // Quantum Tunnel
   socket.on('quantumTunnel', (payload = {}) => {
     try {
       const p = gameState.players[socket.id];
@@ -69,6 +70,87 @@ function handleConnection(io, socket) {
     }
   });
 
+  // ⭐ NUEVO EVENTO: Spawn de bots de Supercúmulo
+  socket.on('reachedSupercumulo', (data) => {
+    try {
+      const player = gameState.players[socket.id];
+      if (!player || !player.isAlive) {
+        console.warn(`❌ Player ${socket.id} not found or not alive`);
+        return;
+      }
+
+      // Verificar que realmente llegó a 200
+      if (player.size < 200) {
+        console.warn(`⚠️ Player ${player.name} tried to spawn bots at size ${player.size} (< 200)`);
+        return;
+      }
+
+      // Verificar que no haya spawneado ya (evitar spam)
+      if (player._supercumuloBotsSpawned) {
+        console.warn(`⚠️ Player ${player.name} already spawned Supercumulo bots`);
+        return;
+      }
+
+      console.log(`🌌 Player ${player.name} reached Supercumulo (size: ${player.size})`);
+
+      // Spawnear los 4 bots
+      const spawnResult = spawnSupercumuloBots(socket.id);
+
+      // Marcar como ya spawneado
+      player._supercumuloBotsSpawned = true;
+
+      // ⭐ NUEVO: Activar evento de atracción gravitacional
+      gameState.gravitationalEvent = {
+        active: true,
+        center: spawnResult.diamondCenter,
+        startTime: Date.now(),
+        duration: 5000, // 5 segundos de atracción
+        attractionRadius: 100, // Radio de detención (pixels)
+        attractionSpeed: 150 // Velocidad de atracción (pixels/segundo)
+      };
+
+      // ⭐⭐⭐ AGREGAR ESTO AQUÍ ⭐⭐⭐
+      // Eliminar todos los bots normales (no estáticos)
+      let botsRemoved = 0;
+      Object.keys(gameState.players).forEach(playerId => {
+        const p = gameState.players[playerId];
+        if (p.isBot && !p.isStaticBot && !p.isSupercumuloBot) {
+          delete gameState.players[playerId];
+          botsRemoved++;
+        }
+      });
+      console.log(`🗑️ Removed ${botsRemoved} normal bots for gravitational event`);
+
+      // Marcar que no se deben generar más bots
+      gameState._botsDisabled = true;
+      // ⭐⭐⭐ FIN DEL CÓDIGO NUEVO ⭐⭐⭐
+
+      // Enviar evento a TODOS los clientes
+      io.emit('gravitationalPull', {
+        center: spawnResult.diamondCenter,
+        duration: 5000,
+        message: '🌌 Gravitational anomaly detected! All units being pulled...'
+      });
+
+      // Enviar confirmación al cliente
+      socket.emit('supercumuloBotsSpawned', {
+        success: true,
+        bots: spawnResult.bots,
+        corner: spawnResult.corner,
+        message: `4 Cluster Bots spawned at ${spawnResult.corner.name}`
+      });
+
+      console.log(`✅ Supercumulo bots spawned successfully for ${player.name}`);
+      console.log(`🌀 Gravitational event activated at (${spawnResult.diamondCenter.x}, ${spawnResult.diamondCenter.y})`);
+
+    } catch (e) {
+      console.error('❌ reachedSupercumulo handler error:', e);
+      socket.emit('supercumuloBotsSpawned', {
+        success: false,
+        error: e.message
+      });
+    }
+  });
 
   // Disconnect
   socket.on('disconnect', () => {

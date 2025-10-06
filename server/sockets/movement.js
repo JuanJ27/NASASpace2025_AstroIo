@@ -9,6 +9,13 @@ function handleMovement(socket) {
       return;
     }
 
+    // ⭐⭐⭐ NUEVO: Rechazar movimientos de jugadores congelados ⭐⭐⭐
+    if (player._frozenByGravity) {
+      // Jugador congelado, ignorar comandos de movimiento
+      return;
+    }
+    // ⭐⭐⭐ FIN DEL CÓDIGO NUEVO ⭐⭐⭐
+
     // Validar coordenadas
     if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
       console.warn(`Invalid move target from ${socket.id}:`, target);
