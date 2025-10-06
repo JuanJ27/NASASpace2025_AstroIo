@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstroIo - Space Battle Arena</title>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Orbitron', 'Arial', sans-serif;
+      background: #0a0a0f;
+    }
+
+    /* Subtle background gradient (PixiJS canvas will render stars) */
+    #background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(88, 28, 135, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(30, 64, 175, 0.05) 0%, transparent 50%),
+        #0a0a0f;
+      z-index: -2;
+    }
+
+    #gameCanvas {
+      display: block;
+      cursor: none;
+      image-rendering: crisp-edges;
+    }
+
+    /* Name Selection Modal */
+    #nameModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    #nameModal.hidden {
+      display: none;
+    }
+
+    #nameForm {
+      background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 40, 0.95));
+      padding: 40px;
+      border-radius: 20px;
+      border: 2px solid rgba(138, 43, 226, 0.5);
+      box-shadow: 0 0 40px rgba(138, 43, 226, 0.3), inset 0 0 60px rgba(138, 43, 226, 0.1);
+      text-align: center;
+      max-width: 450px;
+      width: 90%;
+    }
+
+    #nameForm h1 {
+      color: #fff;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(138, 43, 226, 0.8);
+      letter-spacing: 3px;
+      font-weight: 900;
+    }
+
+    #nameForm .subtitle {
+      color: #aaa;
+      font-size: 0.9em;
+      margin-bottom: 30px;
+      letter-spacing: 1px;
+    }
+
+    #nameInput {
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 1.1em;
+      font-family: 'Orbitron', Arial, sans-serif;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(138, 43, 226, 0.5);
+      border-radius: 10px;
+      color: #fff;
+      outline: none;
+      transition: all 0.3s ease;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    #nameInput:focus {
+      border-color: rgba(138, 43, 226, 1);
+      box-shadow: 0 0 20px rgba(138, 43, 226, 0.5);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    #nameInput::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    #startButton {
+      width: 100%;
+      padding: 15px 20px;
+      margin-top: 20px;
+      font-size: 1.2em;
+      font-family: 'Orbitron', Arial, sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #8a2be2, #6a1bb2);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+      box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+    }
+
+    #startButton:hover {
+      background: linear-gradient(135deg, #9a3bf2, #7a2bc2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+    }
+
+    #startButton:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 10px rgba(138, 43, 226, 0.4);
+    }
+
+    #errorMessage {
+      color: #ff6b6b;
+      margin-top: 15px;
+      font-size: 0.9em;
+      min-height: 20px;
+      text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    }
+
+    /* HUD Panel */
+    #hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 30, 0.9));
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid rgba(138, 43, 226, 0.4);
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      color: #fff;
+      font-size: 14px;
+      min-width: 220px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #hud.hidden {
+      display: none;
+    }
+
+    #hud h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+      color: #8a2be2;
+      text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+      letter-spacing: 2px;
+      border-bottom: 2px solid rgba(138, 43, 226, 0.3);
+      padding-bottom: 10px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(138, 43, 226, 0.2);
+    }
+
+    .stat-label {
+      color: #aaa;
+      letter-spacing: 1px;
+    }
+
+    .stat-value {
+      color: #fff;
+      font-weight: 700;
+      text-shadow: 0 0 5px rgba(138, 43, 226, 0.5);
+    }
+
+    #playerName {
+      color: #8a2be2;
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
+    /* Leaderboard */
+    #leaderboard {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, rgba(7, 7, 17, 0.9), rgba(10, 10, 30, 0.9));
+      padding: 20px;
+      border-radius: 15px;
+      border: 2px solid rgba(138, 43, 226, 0.4);
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      color: #fff;
+      font-size: 13px;
+      min-width: 200px;
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    #leaderboard.hidden {
+      display: none;
+    }
+
+    #leaderboard h3 {
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+      color: #8a2be2;
+      text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+      letter-spacing: 2px;
+      text-align: center;
+      border-bottom: 2px solid rgba(138, 43, 226, 0.3);
+      padding-bottom: 10px;
+    }
+
+    .leaderboard-entry {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      padding: 6px 10px;
+      background: rgba(138, 43, 226, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(138, 43, 226, 0.2);
+    }
+
+    .leaderboard-entry.self {
+      background: rgba(138, 43, 226, 0.3);
+      border-color: rgba(138, 43, 226, 0.6);
+    }
+
+    .leaderboard-rank {
+      color: #8a2be2;
+      font-weight: 700;
+      margin-right: 10px;
+    }
+
+    .leaderboard-name {
+      flex: 1;
+      color: #fff;
+    }
+
+    .leaderboard-size {
+      color: #8a2be2;
+      font-weight: 700;
+    }
+
+    /* Game Over Screen */
+    #gameOverScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      backdrop-filter: blur(10px);
+    }
+
+    #gameOverScreen.hidden {
+      display: none;
+    }
+
+    #gameOverContent {
+      text-align: center;
+      padding: 40px;
+      background: linear-gradient(135deg, rgba(30, 30, 50, 0.95), rgba(20, 20, 40, 0.95));
+      border-radius: 20px;
+      border: 2px solid rgba(255, 107, 107, 0.5);
+      box-shadow: 0 0 40px rgba(255, 107, 107, 0.3);
+      max-width: 500px;
+    }
+
+    #gameOverContent h1 {
+      color: #ff6b6b;
+      font-size: 3em;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+    }
+
+    #gameOverContent p {
+      color: #fff;
+      font-size: 1.2em;
+      margin: 15px 0;
+    }
+
+    #respawnButton {
+      padding: 15px 40px;
+      margin-top: 30px;
+      font-size: 1.2em;
+      font-family: 'Orbitron', Arial, sans-serif;
+      font-weight: 700;
+      background: linear-gradient(135deg, #8a2be2, #6a1bb2);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      letter-spacing: 2px;
+      box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+    }
+
+    #respawnButton:hover {
+      background: linear-gradient(135deg, #9a3bf2, #7a2bc2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+    }
+
+    /* Minimap */
+    #minimap {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: 200px;
+      height: 140px;
+      border-radius: 12px;
+      border: 2px solid rgba(138,43,226,0.35);
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9), rgba(10, 10, 30, 0.9));
+      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
+      z-index: 1200;
+      overflow: hidden;
+    }
+    #minimapCanvas { width: 100%; height: 100%; display: block; }
+
+    /* Scale Rule Panel (replaces old instructions) */
+    #scalePanel {
+      position: fixed; left: 20px; bottom: 20px; width: 280px;
+      background: linear-gradient(135deg, rgba(20,20,40,0.9), rgba(10,10,30,0.9));
+      padding: 14px 16px; border-radius: 15px; border: 2px solid rgba(138,43,226,0.4);
+      box-shadow: 0 0 30px rgba(138,43,226,0.2); color: #fff; font-size: 12px;
+      backdrop-filter: blur(10px); z-index: 100;
+    }
+    #scaleTitle { color: #8a2be2; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; text-shadow: 0 0 10px rgba(138,43,226,0.8); }
+    #scaleBar { position: relative; height: 10px; border-radius: 6px; overflow: hidden; background: rgba(138,43,226,0.15); border: 1px solid rgba(138,43,226,0.35); margin: 6px 0; }
+    #scaleFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, rgba(138,43,226,0.9), rgba(0,200,255,0.9)); }
+    #scaleLabels { display: flex; justify-content: space-between; color: #aaa; }
+    #scaleCurrent { margin-top: 6px; color: #fff; font-weight: 700; text-shadow: 0 0 5px rgba(138,43,226,0.5); }
+  </style>
+</head>
+<body>
+  <!-- Background -->
+  <div id="background"></div>
+
+  <!-- Name Selection Modal -->
+  <div id="nameModal">
+    <div id="nameForm">
+      <h1>ASTRO.IO</h1>
+      <p class="subtitle">Enter the Space Battle Arena</p>
+      <input 
+        type="text" 
+        id="nameInput" 
+        placeholder="Enter your name" 
+        maxlength="20"
+        autocomplete="off"
+      />
+      <div id="errorMessage"></div>
+      <button id="startButton">LAUNCH</button>
+    </div>
+  </div>
+
+  <!-- HUD Panel -->
+  <div id="hud" class="hidden">
+    <h3>STATUS</h3>
+    <div class="stat-row">
+      <span class="stat-label">Name:</span>
+      <span class="stat-value" id="playerName">-</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Size:</span>
+      <span class="stat-value" id="size">20</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Players:</span>
+      <span class="stat-value" id="players">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Position:</span>
+      <span class="stat-value" id="position">0, 0</span>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboard" class="hidden">
+    <h3>LEADERBOARD</h3>
+    <div id="leaderboardList"></div>
+  </div>
+
+  <!-- Scale Rule (replaces old Instructions block) -->
+  <div id="scalePanel" class="hidden">
+    <div id="scaleTitle">SCALE</div>
+    <div id="scaleBar"><div id="scaleFill"></div></div>
+    <div id="scaleLabels"><span>10 Å</span><span>1 µm</span></div>
+    <div id="scaleCurrent">Current: 10 Å</div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" class="hidden">
+    <div id="gameOverContent">
+      <h1>ELIMINATED</h1>
+      <p id="gameOverMessage">You were eaten!</p>
+      <p id="finalStats"></p>
+      <button id="respawnButton">RESPAWN</button>
+    </div>
+  </div>
+
+  <!-- Minimap -->
+  <div id="minimap">
+    <canvas id="minimapCanvas" width="200" height="140"></canvas>
+  </div>
+
+  <!-- PixiJS CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.2/browser/pixi.min.js"></script>
+  
+  <!-- Socket.IO CDN -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    /**
+     * Adds element-based orb system (H/He/O/C/Ne), minimap without viewport box,
+     * Scale Rule (size 20 → 10 Å, size 250 → 1 µm), and visual size wrap at 250.
+     */
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] [${type.toUpperCase()}] ${message}`);
+    }
+
+    // Game State
+    let myPlayerId = null;
+    let myPlayerName = '';
+    let worldWidth = 2000;
+    let worldHeight = 2000;
+    let camera = { x: 0, y: 0 };
+    let isGameActive = false;
+    let finalSize = 0;
+
+    // Zoom state
+    let viewScale = 1.0;
+
+    // Client-side state
+    let clientGameState = {
+      players: {},
+      orbs: new Map()
+    };
+
+    // PixiJS
+    let app = null;
+    let worldContainer = null;
+    let starContainer = null;
+    let stars = [];
+    let playerGraphics = {};
+    let playerNameTexts = {};
+    // For element sprites we store PIXI.Sprite objects
+    let orbGraphics = {};
+
+    // Socket.IO
+    let socket = null;
+
+    // DOM
+    const nameModal = document.getElementById('nameModal');
+    const nameInput = document.getElementById('nameInput');
+    const startButton = document.getElementById('startButton');
+    const errorMessage = document.getElementById('errorMessage');
+    const hud = document.getElementById('hud');
+    const leaderboard = document.getElementById('leaderboard');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const respawnButton = document.getElementById('respawnButton');
+
+    // Scale panel DOM
+    const scalePanel = document.getElementById('scalePanel');
+    const scaleFill = document.getElementById('scaleFill');
+    const scaleCurrent = document.getElementById('scaleCurrent');
+
+    // Minimap
+    const miniCanvas = document.getElementById('minimapCanvas');
+    const miniCtx = miniCanvas.getContext('2d');
+
+    /* ---------- Element setup (proportions, points, textures & colors) ---------- */
+    const ELEMENTS = [
+      { key: 'H',   name: 'Hydrogen', weight: 0.60, points: 0.5,  textureKey: 'texH',  src: '/assets/bola_azul.webp',   mini: '#4da6ff' },
+      { key: 'He',  name: 'Helium',   weight: 0.15, points: 2.0,  textureKey: 'texHe', src: '/assets/bola_morada.webp', mini: '#b37cff' },
+      { key: 'O',   name: 'Oxygen',   weight: 0.10, points: 3.0,  textureKey: 'texO',  src: '/assets/bola_verde.webp',  mini: '#7ce37c' },
+      { key: 'C',   name: 'Carbone',  weight: 0.085,points: 4.0,  textureKey: 'texC',  src: '/assets/bola_roca.webp',   mini: '#9ea6ad' },
+      { key: 'Ne',  name: 'Neon',     weight: 0.065,points: 6.0,  textureKey: 'texNe', src: '/assets/bola_roja.webp',   mini: '#ff6b6b' },
+    ];
+    const CUM_WEIGHTS = (() => { let acc = 0; return ELEMENTS.map(e => (acc += e.weight)); })();
+
+    function hash01(str) {
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+      return (h >>> 0) / 4294967296;
+    }
+    function elementForOrb(orbId) {
+      const r = hash01(orbId || '');
+      for (let i = 0; i < CUM_WEIGHTS.length; i++) if (r <= CUM_WEIGHTS[i]) return ELEMENTS[i];
+      return ELEMENTS[ELEMENTS.length - 1];
+    }
+
+    /* ---------- Visual size wrap ---------- */
+    const SIZE_START = 20;
+    const SIZE_WRAP  = 250;
+    const CYCLE = (SIZE_WRAP - SIZE_START); // 230
+
+    function apparentSize(realSize) {
+      if (realSize <= SIZE_WRAP) return realSize;
+      const off = (realSize - SIZE_START) % CYCLE;
+      return SIZE_START + off;
+    }
+
+    /* ---------- Scale rule (size→length mapping) ---------- */
+    // size 20 → 10 Å (1 nm), size 250 → 1 µm (1000 nm)
+    const SCALE_MIN_NM = 1;      // 10 Å
+    const SCALE_MAX_NM = 1000;   // 1 µm
+    function sizeToNm(size) {
+      const t = clamp((size - SIZE_START) / (SIZE_WRAP - SIZE_START), 0, 1);
+      return SCALE_MIN_NM + t * (SCALE_MAX_NM - SCALE_MIN_NM);
+    }
+    function fmtScale(nm) {
+      if (nm < 1) return Math.round(nm * 10) + ' Å';  // 1 nm = 10 Å
+      if (nm < 1000) return Math.round(nm) + ' nm';
+      return (nm / 1000).toFixed(2).replace(/\.00$/,'') + ' µm';
+    }
+    function updateScaleRule(currentSize) {
+      const nm = sizeToNm(currentSize);
+      const progress = clamp((currentSize - SIZE_START) / (SIZE_WRAP - SIZE_START), 0, 1);
+      scaleFill.style.width = (progress * 100).toFixed(1) + '%';
+      scaleCurrent.textContent = 'Current: ' + fmtScale(nm);
+    }
+
+    /* ---------- Pixi ---------- */
+    function initializePixi() {
+      try {
+        app = new PIXI.Application({
+          width: window.innerWidth,
+          height: window.innerHeight,
+          backgroundColor: 0x0a0a0f,
+          antialias: true,
+          resolution: window.devicePixelRatio || 1,
+          autoDensity: true
+        });
+        document.body.appendChild(app.view);
+        app.view.id = 'gameCanvas';
+
+        starContainer = new PIXI.ParticleContainer(1000, {
+          scale: true, position: true, alpha: true, rotation: false, uvs: false, tint: false
+        });
+        app.stage.addChild(starContainer);
+
+        worldContainer = new PIXI.Container();
+        app.stage.addChild(worldContainer);
+
+        log('PixiJS initialized with full-screen canvas');
+      } catch (error) {
+        log(`Error initializing PixiJS: ${error.message}`, 'error');
+        showError('Failed to initialize game graphics');
+      }
+    }
+
+    function createStarryBackground() {
+      try {
+        if (!starContainer) return;
+        const star1Texture = PIXI.Loader.shared.resources['star1'].texture;
+        const star2Texture = PIXI.Loader.shared.resources['star2'].texture;
+        const numStars = 300, w = 4000, h = 4000;
+        stars = [];
+        for (let i = 0; i < numStars; i++) {
+          const texture = i % 2 === 0 ? star1Texture : star2Texture;
+          const star = new PIXI.Sprite(texture);
+          star.anchor.set(0.5);
+          star.x = Math.random() * w - w / 2;
+          star.y = Math.random() * h - h / 2;
+          const s = Math.random() * 0.5 + 0.5;
+          star.scale.set(s);
+          star.alpha = Math.random() * 0.5 + 0.5;
+          star.baseAlpha = star.alpha;
+          star.twinkleSpeed = Math.random() * 0.001 + 0.001;
+          star.twinkleOffset = Math.random() * Math.PI * 2;
+          star.baseX = star.x; star.baseY = star.y;
+          starContainer.addChild(star);
+          stars.push(star);
+        }
+        app.ticker.add(() => {
+          const time = Date.now();
+          stars.forEach(star => {
+            star.alpha = star.baseAlpha * (0.7 + 0.3 * Math.sin(time * star.twinkleSpeed + star.twinkleOffset));
+          });
+        });
+      } catch (e) { log(`Error creating starry background: ${e.message}`, 'error'); }
+    }
+
+    function updateStarParallax() {
+      if (!stars.length) return;
+      const k = 0.2;
+      stars.forEach(star => {
+        star.x = star.baseX - camera.x * k;
+        star.y = star.baseY - camera.y * k;
+      });
+    }
+
+    /* ---------- Resize ---------- */
+    let resizeTimeout;
+    function handleResize() {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (app) {
+          app.renderer.resize(window.innerWidth, window.innerHeight);
+          log(`Canvas resized to ${window.innerWidth}x${window.innerHeight}`);
+        }
+        if (miniCanvas) { miniCanvas.width = 200; miniCanvas.height = 140; }
+      }, 100);
+    }
+    window.addEventListener('resize', handleResize);
+
+    /* ---------- UI helpers ---------- */
+    function validateName(name) {
+      if (!name || name.trim().length === 0) return { valid: false, error: 'Name cannot be empty' };
+      if (name.length > 20) return { valid: false, error: 'Name too long (max 20 characters)' };
+      if (!/^[a-zA-Z0-9_\s]+$/.test(name)) return { valid: false, error: 'Name can only contain letters, numbers, and spaces' };
+      return { valid: true };
+    }
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+      setTimeout(() => { errorMessage.style.display = 'none'; }, 3000);
+    }
+
+    /* ---------- Flow ---------- */
+    function startGame() {
+      const name = nameInput.value.trim();
+      const validation = validateName(name);
+      if (!validation.valid) { showError(validation.error); return; }
+      myPlayerName = name;
+
+      nameModal.classList.add('hidden');
+      hud.classList.remove('hidden');
+      leaderboard.classList.remove('hidden');
+      scalePanel.classList.remove('hidden'); // show scale rule
+      document.getElementById('playerName').textContent = myPlayerName;
+
+      showError('Loading game assets...');
+
+      // Load star textures + element textures
+      const loader = PIXI.Loader.shared
+        .add('star1', '/assets/star1.webp')
+        .add('star2', '/assets/star2.webp');
+
+      ELEMENTS.forEach(e => loader.add(e.textureKey, e.src));
+
+      loader.load(() => {
+        initializePixi();
+        createStarryBackground();
+        connectToServer();
+        errorMessage.textContent = '';
+      });
+    }
+
+    function connectToServer() {
+      try {
+        socket = io();
+
+        socket.on('connect', () => {
+          log('Connected to server');
+          socket.emit('setName', myPlayerName);
+        });
+
+        socket.on('init', (data) => {
+          myPlayerId = data.playerId;
+          worldWidth = data.worldWidth;
+          worldHeight = data.worldHeight;
+          isGameActive = true;
+          log(`Initialized as player ${myPlayerId}`);
+        });
+
+        socket.on('gameFull', (data) => {
+          showError(data.message);
+          setTimeout(() => { location.reload(); }, 3000);
+        });
+
+        socket.on('gameOver', (data) => {
+          isGameActive = false;
+          showGameOver(data);
+        });
+
+        socket.on('gameState', (state) => {
+          if (isGameActive) updateGameState(state);
+        });
+
+        socket.on('disconnect', () => log('Disconnected from server', 'warn'));
+      } catch (error) {
+        log(`Error connecting to server: ${error.message}`, 'error');
+        showError('Failed to connect to server');
+      }
+    }
+
+    /* ---------- Game state apply ---------- */
+    function updateGameState(delta) {
+      try {
+        if (delta.players) {
+          Object.entries(delta.players).forEach(([id, player]) => {
+            clientGameState.players[id] = player; // server is source of truth
+          });
+        }
+        if (delta.removedPlayers) {
+          delta.removedPlayers.forEach(id => {
+            delete clientGameState.players[id];
+            if (playerGraphics[id]) { playerGraphics[id].destroy(); delete playerGraphics[id]; }
+            if (playerNameTexts[id]) { playerNameTexts[id].destroy(); delete playerNameTexts[id]; }
+          });
+        }
+        if (delta.orbs) {
+          delta.orbs.forEach(orb => { clientGameState.orbs.set(orb.id, orb); });
+        }
+        if (delta.removedOrbs) {
+          delta.removedOrbs.forEach(orbId => {
+            clientGameState.orbs.delete(orbId);
+            if (orbGraphics[orbId]) { orbGraphics[orbId].destroy(); delete orbGraphics[orbId]; }
+          });
+        }
+
+        Object.values(clientGameState.players).forEach(renderPlayer);
+        clientGameState.orbs.forEach(renderOrb);
+
+        if (myPlayerId && clientGameState.players[myPlayerId]) {
+          const me = clientGameState.players[myPlayerId];
+          updateCamera(me);
+          updateHUD(me, Object.keys(clientGameState.players).length);
+          updateScaleRule(me.size);
+        }
+
+        updateLeaderboard(clientGameState.players);
+        drawMinimap();
+      } catch (error) { log(`Error updating game state: ${error.message}`, 'error'); }
+    }
+
+    /* ---------- Rendering ---------- */
+    function renderPlayer(player) {
+      try {
+        let graphics = playerGraphics[player.id];
+        let nameText = playerNameTexts[player.id];
+
+        if (!graphics) { graphics = new PIXI.Graphics(); worldContainer.addChild(graphics); playerGraphics[player.id] = graphics; }
+        if (!nameText) {
+          nameText = new PIXI.Text('', { fontFamily: 'Orbitron, Arial', fontSize: 14, fill: 0xffffff, stroke: 0x000000, strokeThickness: 3, align: 'center' });
+          nameText.anchor.set(0.5); worldContainer.addChild(nameText); playerNameTexts[player.id] = nameText;
+        }
+
+        const vis = apparentSize(player.size); // visual wrap
+
+        graphics.clear();
+
+        const isMe = player.id === myPlayerId;
+        const color = isMe ? 0x00ff88 : 0x0088ff;
+        const glowColor = isMe ? 0x00ffaa : 0x00aaff;
+
+        graphics.beginFill(glowColor, 0.2);
+        graphics.drawCircle(player.x, player.y, vis + 8);
+        graphics.endFill();
+
+        graphics.beginFill(color, 0.9);
+        graphics.lineStyle(3, 0xffffff, 0.6);
+        graphics.drawCircle(player.x, player.y, vis);
+        graphics.endFill();
+
+        nameText.text = player.name || 'Player';
+        nameText.x = player.x;
+        nameText.y = player.y - vis - 20;
+      } catch (error) { log(`Error rendering player ${player.id}: ${error.message}`, 'error'); }
+    }
+
+    function renderOrb(orb) {
+      try {
+        // Create sprite (once) using the element texture
+        let sprite = orbGraphics[orb.id];
+        const el = elementForOrb(orb.id);
+
+        if (!sprite) {
+          const tex = PIXI.Loader.shared.resources[el.textureKey]?.texture;
+          if (!tex) return;
+          sprite = new PIXI.Sprite(tex);
+          sprite.anchor.set(0.5);
+          worldContainer.addChild(sprite);
+          orbGraphics[orb.id] = sprite;
+        }
+
+        // Update position & size
+        sprite.x = orb.x;
+        sprite.y = orb.y;
+        // Keep visual size consistent with circle radius: diameter = 2 * size
+        const d = Math.max(2, orb.size * 2);
+        sprite.width = d;
+        sprite.height = d;
+      } catch (error) { log(`Error rendering orb ${orb.id}: ${error.message}`, 'error'); }
+    }
+
+    /* ---------- Camera & Zoom ---------- */
+    function updateCamera(player) {
+      const vis = apparentSize(player.size);
+      const desiredScale = clamp(1.4 - (vis / 250), 0.6, 1.4);
+      viewScale = lerp(viewScale || desiredScale, desiredScale, 0.15);
+      worldContainer.scale.set(viewScale, viewScale);
+
+      const viewW = app.screen.width / viewScale;
+      const viewH = app.screen.height / viewScale;
+
+      camera.x = player.x - viewW / 2;
+      camera.y = player.y - viewH / 2;
+
+      camera.x = Math.max(0, Math.min(worldWidth - viewW, camera.x));
+      camera.y = Math.max(0, Math.min(worldHeight - viewH, camera.y));
+
+      worldContainer.x = -camera.x * viewScale;
+      worldContainer.y = -camera.y * viewScale;
+
+      updateStarParallax();
+    }
+
+    /* ---------- HUD ---------- */
+    function updateHUD(player, playerCount) {
+      try {
+        document.getElementById('size').textContent = Math.floor(player.size); // true size from server
+        document.getElementById('players').textContent = playerCount;
+        document.getElementById('position').textContent =
+          Math.floor(player.x) + ', ' + Math.floor(player.y);
+        finalSize = Math.floor(player.size);
+      } catch (error) { log(`Error updating HUD: ${error.message}`, 'error'); }
+    }
+
+    /* ---------- Leaderboard ---------- */
+    function updateLeaderboard(players) {
+      try {
+        const sorted = Object.values(players).sort((a, b) => b.size - a.size).slice(0, 5);
+        const leaderboardList = document.getElementById('leaderboardList');
+        leaderboardList.innerHTML = '';
+        sorted.forEach((player, index) => {
+          const entry = document.createElement('div');
+          entry.className = 'leaderboard-entry' + (player.id === myPlayerId ? ' self' : '');
+          entry.innerHTML = `
+            <span class="leaderboard-rank">#${index + 1}</span>
+            <span class="leaderboard-name">${player.name || 'Player'}</span>
+            <span class="leaderboard-size">${Math.floor(player.size)}</span>
+          `;
+          leaderboardList.appendChild(entry);
+        });
+      } catch (error) { log(`Error updating leaderboard: ${error.message}`, 'error'); }
+    }
+
+    /* ---------- Game Over ---------- */
+    function showGameOver(data) {
+      try {
+        document.getElementById('gameOverMessage').textContent = data.message;
+        document.getElementById('finalStats').textContent =
+          `Final Size: ${finalSize} | Name: ${myPlayerName}`;
+        gameOverScreen.classList.remove('hidden');
+      } catch (error) { log(`Error showing game over: ${error.message}`, 'error'); }
+    }
+
+    /* ---------- Input (throttled & zoom-correct) ---------- */
+    let lastMove = 0;
+    document.addEventListener('mousemove', (event) => {
+      if (!socket || !isGameActive || !myPlayerId || !app) return;
+      const now = performance.now();
+      if (now - lastMove < 16) return; // ~60 Hz throttle
+      lastMove = now;
+      try {
+        const mouseX = camera.x + (event.clientX / (viewScale || 1));
+        const mouseY = camera.y + (event.clientY / (viewScale || 1));
+        socket.emit('move', { x: clamp(mouseX, 0, worldWidth), y: clamp(mouseY, 0, worldHeight) });
+      } catch (error) { log(`Error sending move: ${error.message}`, 'error'); }
+    });
+
+    /* ---------- Minimap (colors by element; no viewport rectangle) ---------- */
+    function drawMinimap() {
+      if (!miniCtx) return;
+      const w = miniCanvas.width, h = miniCanvas.height;
+      miniCtx.clearRect(0,0,w,h);
+      miniCtx.fillStyle = 'rgba(0,0,0,0.35)';
+      miniCtx.strokeStyle = 'rgba(138,43,226,0.5)';
+      miniCtx.lineWidth = 2;
+      miniCtx.fillRect(0,0,w,h);
+      miniCtx.strokeRect(0,0,w,h);
+
+      const sx = w / worldWidth;
+      const sy = h / worldHeight;
+
+      // orbs by element color
+      clientGameState.orbs.forEach(o => {
+        const el = elementForOrb(o.id);
+        miniCtx.fillStyle = el.mini;
+        miniCtx.fillRect(o.x * sx, o.y * sy, 2, 2);
+      });
+
+      // players
+      Object.values(clientGameState.players).forEach(p => {
+        const isMe = p.id === myPlayerId;
+        miniCtx.fillStyle = isMe ? '#ffffff' : '#66b3ff';
+        const r = Math.max(2, Math.min(4, apparentSize(p.size) * 0.02));
+        miniCtx.beginPath();
+        miniCtx.arc(p.x * sx, p.y * sy, r, 0, Math.PI * 2);
+        miniCtx.fill();
+      });
+
+      // viewport rectangle intentionally omitted
+    }
+
+    /* ---------- Utils ---------- */
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function lerp(a,b,t){ return a + (b-a)*t; }
+
+    // Events
+    startButton.addEventListener('click', startGame);
+    nameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') startGame(); });
+    respawnButton.addEventListener('click', () => { location.reload(); });
+    nameInput.focus();
+
+    log('Client initialized and ready');
+  </script>
+</body>
+</html>

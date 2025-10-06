@@ -209,38 +209,26 @@ console.log('☄️ Hazards DISABLED (no players in Sub3/Sub4).');
 // Tick hazards (does nothing if inactive)
 updateHazards(dt, io);
 
-    // --- Galaxy hazards (Nivel 2 / sub 1) ---
-    let anyInGalaxyBand = false;
-    for (const p of Object.values(gameState.players)) {
-      if (!p || !p.isAlive) continue;
-      if (p.size >= GALAXY_HAZARD_RANGE.min && p.size <= GALAXY_HAZARD_RANGE.max) {
-        anyInGalaxyBand = true; break;
-      }
-    }
-    if (anyInGalaxyBand && !areGalaxyHazardsActive()) enableGalaxyHazards();
-    else if (!anyInGalaxyBand && areGalaxyHazardsActive()) disableGalaxyHazards();
-    updateGalaxyHazards(dt, io);
+// ── LAZY Galaxy hazards activation (Level 3: 120-159):
+let anyInGalaxyBand = false;
+for (const p of Object.values(gameState.players)) {
+  if (!p || !p.isAlive) continue;
+  if (p.size >= GALAXY_HAZARD_RANGE.min && p.size <= GALAXY_HAZARD_RANGE.max) {
+    anyInGalaxyBand = true;
+    break;
+  }
+}
 
-    // ── LAZY Galaxy hazards activation (Level 3: 120-159):
-    let anyInGalaxyBand = false;
-    for (const p of Object.values(gameState.players)) {
-      if (!p || !p.isAlive) continue;
-      if (p.size >= GALAXY_HAZARD_RANGE.min && p.size <= GALAXY_HAZARD_RANGE.max) {
-        anyInGalaxyBand = true;
-        break;
-      }
-    }
+if (anyInGalaxyBand && !areGalaxyHazardsActive()) {
+  enableGalaxyHazards();
+  console.log('🌌 Galaxy Hazards ENABLED (player in Galaxy band 120-159).');
+} else if (!anyInGalaxyBand && areGalaxyHazardsActive()) {
+  disableGalaxyHazards();
+  console.log('🌌 Galaxy Hazards DISABLED (no players in Galaxy band).');
+}
 
-    if (anyInGalaxyBand && !areGalaxyHazardsActive()) {
-      enableGalaxyHazards();
-      console.log('🌌 Galaxy Hazards ENABLED (player in Galaxy band 120-159).');
-    } else if (!anyInGalaxyBand && areGalaxyHazardsActive()) {
-      disableGalaxyHazards();
-      console.log('🌌 Galaxy Hazards DISABLED (no players in Galaxy band).');
-    }
-
-    // Tick galaxy hazards (orbital movement + physics)
-    updateGalaxyHazards(dt, io);
+// Tick galaxy hazards (orbital movement + physics)
+updateGalaxyHazards(dt, io);
 
 // Build delta
 const delta = {
