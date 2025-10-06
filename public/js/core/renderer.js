@@ -238,27 +238,37 @@ class GameRenderer {
       return window._transitionVisOverride;
     }
 
+    // ⭐ NUEVO: Tamaño visual FIJO para bots estáticos (el más confiable)
+    if (player.isSupercumuloBot || player.isStaticBot) {
+      return 80; // Radio visual fijo de 80px (160px de diámetro)
+    }
+
     // Prefer the authoritative baseline coming from the server
     if (Number.isFinite(player.levelEntrySize)) {
       const grown = player.size - player.levelEntrySize;
-      return Math.max(6, Math.min(200, BASE + grown));
+      return Math.max(6, Math.min(300, BASE + grown));
     }
 
     // Fallback to the old client baseline if present (legacy)
     if (isMe && window._visBaseline && Number.isFinite(window._visBaseline.atSize)) {
       const base = Number.isFinite(window._visBaseline.base) ? window._visBaseline.base : BASE;
       const vis  = base + (player.size - window._visBaseline.atSize);
-      return Math.max(6, Math.min(200, vis));
+      return Math.max(6, Math.min(300, vis));
     }
 
     // Last resort: cap raw size (prevents giant sprites)
-    return Math.max(6, Math.min(200, player.size));
+    return Math.max(6, Math.min(300, player.size));
   }
 
   /**
    * Determinar textura del jugador según su tamaño (progresión de niveles)
    */
   _getPlayerTextureKey(player) {
+    // ⭐ NUEVO: Si el jugador tiene una textura personalizada, usarla
+    if (player.textureKey) {
+      return player.textureKey;
+    }
+
     const size = player.size || 10;
     
     // Bots tienen texturas diferentes
@@ -284,7 +294,7 @@ class GameRenderer {
     } else if (size >= 120 && size < 160) {
       return 'via_lactea'; // Nivel 2: Galaxia
     } else if (size >= 160 && size <= 200) {
-      return 'exotic_galaxy'; // Nivel 3: Supercúmulo
+      return 'cumulo_glubular'; // Nivel 3: Supercúmulo
     }
     
     return 'nebula'; // Fallback
