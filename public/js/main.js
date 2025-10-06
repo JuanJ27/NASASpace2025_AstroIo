@@ -36,8 +36,9 @@ class AstroIoGame {
     // ==============================================================
 
     // ⭐ FLAGS PARA EVENTOS ESPECIALES
-    this._supercumuloBotsRequested = false; // Flag para evitar spawning múltiple
-    this._gravitationalPullActive = false; // ⭐ NUEVO: Flag para evento gravitacional
+    this._supercumuloBotsRequested = false;
+    this._gravitationalPullActive = false;
+    this._finalScreenShown = false; // ⭐ NUEVO: Flag para pantalla final
 
     // ===== Quantum Tunnel (client emitter) =====
     this.QT_INTERVAL_MS = 1000;       // check once per second
@@ -971,27 +972,33 @@ class AstroIoGame {
         this.renderer.transitionToLevel(backgroundLevel, size);
       }
       
-      // Si llegamos al final del juego (size > 200), mostrar pantalla final
-      if (size >= 200 && this.renderer && this.renderer.showFinalScreen) {
-        setTimeout(() => {
-          this.renderer.showFinalScreen();
-        }, 3000); // Esperar 3 segundos antes de mostrar la pantalla final
-      }
-      // =========================================
-
-      // Keep your existing zoom transition & quantum toggle lines as-is
       this.runZoomTransition(transitionColor);
       this._toggleQuantumByLevel(currentLevel);
     }
-
-    // 3) Update active custom levels (animations)
-    const now = performance.now();
-    const dt = (now - this.lastUpdateTime) / 1000;
-    this.lastUpdateTime = now;
-    Object.values(this.customLevels).forEach(lvl => {
-      if (lvl && lvl.active && typeof lvl.update === 'function') lvl.update(dt);
-    });
+      // Si llegamos al final del juego (size > 202), mostrar pantalla final
+  // ⭐⭐⭐ MOVER ESTE BLOQUE AQUÍ (FUERA DEL IF) ⭐⭐⭐
+  // Si llegamos al final del juego (size >= 202), mostrar pantalla final
+  // IMPORTANTE: Esto debe ejecutarse AUNQUE NO HAYA CAMBIO DE NIVEL
+  if (size >= 202 && this.renderer && this.renderer.showFinalScreen) {
+    // Flag para ejecutar solo una vez
+    if (!this._finalScreenShown) {
+      this._finalScreenShown = true;
+      console.log('🌌 Size reached 202! Showing final screen...');
+      setTimeout(() => {
+        this.renderer.showFinalScreen();
+      }, 3000); // Esperar 3 segundos antes de mostrar la pantalla final
+    }
   }
+  // ⭐⭐⭐ FIN DEL BLOQUE MOVIDO ⭐⭐⭐
+
+  // 3) Update active custom levels (animations)
+  const now = performance.now();
+  const dt = (now - this.lastUpdateTime) / 1000;
+  this.lastUpdateTime = now;
+  Object.values(this.customLevels).forEach(lvl => {
+    if (lvl && lvl.active && typeof lvl.update === 'function') lvl.update(dt);
+  });
+}
 
 
   /**
