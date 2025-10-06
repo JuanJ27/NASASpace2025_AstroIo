@@ -236,8 +236,8 @@ players: {},
 orbs: [],
 removedOrbs: [],
 removedPlayers: [],
-      hazards: getHazardsSnapshot(),, // { blackHole, whiteHole, asteroids }
-      galaxyHazards: getGalaxyHazardsSnapshot() // galaxy hazards
+hazards: getHazardsSnapshot(), // { blackHole, whiteHole, asteroids }
+galaxyHazards: getGalaxyHazardsSnapshot() // galaxy hazards
 };
 
 // Changed/new players
