@@ -160,29 +160,33 @@
   }
 
   // ===== Level 2: m → Mm =====
-  class ThirdSolarLevel {
+    class ThirdSolarLevel {
     constructor() {
-      this.key = 'm-Mm';
-      const band = bandByKey(this.key, { min: 40, max: 59, bg: 0x0a0a0f });
-      this.minSize = band.min; this.maxSize = band.max; this.bg = band.bg ?? 0x0a0a0f;
-      this.active = false;
-      this.transitionColor = 0x88ccff; // cool blue
+        this.key = 'm-Mm';
+        const band = bandByKey(this.key, { min: 40, max: 59, bg: 0x0a0a0f });
+        this.minSize = band.min; this.maxSize = band.max; this.bg = band.bg ?? 0x0a0a0f;
+        this.active = false;
+        this.transitionColor = 0x88ccff;
+        this._gfx = null;
+        this._band = null;          // {min,max} for (level 1, sub 3) ∪ (level 1, sub 4)
+        this._lastAllow = null;     // for cheap debug logging (optional)
     }
+
     onEnter() {
-      this.active = true;
-        // after SZ0,SZ1, NM0=1e9, NM1=1e15 and overrideSizeToNanometers…
+        this.active = true;
+
+        // size->nm mapping (m..Mm)
         const bounds = (global.game && typeof global.game.getBoundsForLevel === 'function')
         ? global.game.getBoundsForLevel(2)
         : { min: 80, max: 119 };
-
         const SZ0 = bounds.min, SZ1 = bounds.max;
-        // log mapping 1 m .. 1 Mm
         const NM0 = 1e9, NM1 = 1e15;
         const L0 = Math.log(NM0), L1 = Math.log(NM1);
         global.overrideSizeToNanometers = (size) => {
         const t = clamp((size - SZ0) / Math.max(1, (SZ1 - SZ0)), 0, 1);
         return Math.exp(L0 + t * (L1 - L0));
         };
+
         if (!global.currentLevelSizeBounds) global.currentLevelSizeBounds = {};
         global.currentLevelSizeBounds.min = SZ0;
         global.currentLevelSizeBounds.max = SZ1;
@@ -195,34 +199,89 @@
         accent: 'linear-gradient(90deg, rgba(0,200,255,0.95), rgba(138,43,226,0.9))'
         });
 
+        const rend = global?.game?.renderer;
+        if (rend?.app?.renderer) rend.app.renderer.backgroundColor = this.bg;
 
-      const L2 = global.ELEMENTS_L2 || [];
-      const loader = global?.PIXI?.Loader?.shared;
-      if (loader && L2.length) {
-        L2.forEach(e => { if (!loader.resources[e.textureKey]) loader.add(e.textureKey, e.src); });
-        loader.load(() => {
-          global._orig_ELEMENTS = global._orig_ELEMENTS || global.ELEMENTS;
-          global._orig_getTex = global._orig_getTex || global.getElementTextureSources;
-          global.ELEMENTS = L2;
-          global.getElementTextureSources = () => L2.map(e => ({ key: e.textureKey, src: e.src }));
-        });
-      }
-      const rend = global?.game?.renderer;
-      if (rend?.app?.renderer) rend.app.renderer.backgroundColor = this.bg;
-      if (rend?.starContainer) rend.starContainer.visible = false;
+        // Create a dedicated hazards layer inside the world container
+        if (rend?.worldContainer && !this._gfx) {
+        // IMPORTANT: sortableChildren must be enabled on worldContainer (you already do this)
+        this._gfx = new PIXI.Graphics();
+        this._gfx.zIndex = 30;     // players ~20, names ~40 → we sit in the middle
+        this._gfx.visible = false; // toggled each frame by render()
+        rend.worldContainer.addChild(this._gfx);
+        }
+
+        // Build the union band from LEVELS_CONFIG: (level 1, sublevel 3) ∪ (level 1, sublevel 4)
+        try {
+        const cfg = (global.LEVELS_CONFIG || []);
+        const s3 = cfg.find(e => e.level === 1 && e.sublevel === 3);
+        const s4 = cfg.find(e => e.level === 1 && e.sublevel === 4);
+        if (s3 && s4) {
+            this._band = { min: Math.min(s3.min, s4.min), max: Math.max(s3.max, s4.max) };
+        } else {
+            this._band = { min: 27, max: 119 }; // fallback
+        }
+        } catch {
+        this._band = { min: 27, max: 119 };
+        }
+
+        this._lastAllow = null;
     }
+
     onExit() {
+        this.active = false;
         delete global.overrideSizeToNanometers;
         delete global.overrideFormatScale;
         delete global.currentLevelNmBounds;
-      this.active = false;
-      clearScaleOverrides();
-      if (global._orig_ELEMENTS)  { global.ELEMENTS = global._orig_ELEMENTS; global._orig_ELEMENTS = null; }
-      if (global._orig_getTex)    { global.getElementTextureSources = global._orig_getTex; global._orig_getTex = null; }
+
+        if (this._gfx) {
+        this._gfx.destroy(true);
+        this._gfx = null;
+        }
     }
-    update() {}
-    render() {}
-  }
+
+    update() {} // no per-frame state here; drawing happens in render()
+
+    render(renderer, camera) {
+        if (!this.active || !renderer || !this._gfx) return;
+
+        const game = global.game;
+        if (!game || !game.clientGameState) return;
+        const me = game.clientGameState.players[game.myPlayerId];
+        if (!me) return;
+
+        // Visibility rule (client-side):
+        // Show hazards only while *you* are within (sub3 ∪ sub4); permanently hide if you pass max.
+        const band = this._band || { min: 27, max: 119 };
+        if (me.size > band.max) game._hazardsPermanentlyDisabled = true;
+        const blocked = !!game._hazardsPermanentlyDisabled;
+        const inBand = me.size >= band.min && me.size <= band.max;
+        const allow = inBand && !blocked;
+
+        // Toggle layer visibility and clear when hidden
+        this._gfx.visible = allow;
+        if (!allow) { this._gfx.clear(); return; }
+
+        // Draw hazards coming from the server
+        const hz = game.clientGameState.hazards;
+        if (!hz) { this._gfx.clear(); return; }
+
+        const { blackHole, whiteHole, asteroids } = hz;
+        const g = this._gfx;
+        g.clear();
+
+        // Nota: Los hazards ahora se renderizan con sprites en renderer.js
+        // usando las texturas: agujero_negro1 (blackHole), agn_activo2 (whiteHole), agujero_negro2 (asteroids)
+        // Este código de graphics se mantiene como fallback pero no se usa activamente
+
+        // (Optional) Tiny debug once per state change
+        if (allow !== this._lastAllow) {
+        this._lastAllow = allow;
+        console.log('[ThirdSolarLevel] hazards visible:', allow, 'inBand=', inBand, 'blocked=', blocked, 'me.size=', me.size);
+        }
+    }
+    }
+
 
   // export instances for main.js
   global.FirstSolarLevel  = new FirstSolarLevel();

@@ -39,7 +39,16 @@ const gameState = {
     duration: 0,
     attractionRadius: 0,
     attractionSpeed: 0
-  }
+  },
+  // add inside gameState (alongside players, orbs, etc.)
+  hazards: {
+    level3Initialized: false,
+    blackHole: null,          // { x, y, r }
+    whiteHole: null,          // { x, y, r, destX, destY }
+    asteroids: []             // [{ id, x, y, r, vx, vy }]
+  },
+  whiteHoleUsedBy: {}         // per playerId: true once used
+
 };
 
 // Inicializar orbes
