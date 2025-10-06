@@ -89,50 +89,161 @@ class GameUI {
    * - Bar progress uses current level SIZE bounds
    * - Value uses per-level size→nm mapping & formatter
    */
-  updateScalePanel(playerSize) {
-    try {
-      // 1) Progress: strictly normalized to SIZE band (from main.getLevelInfo thresholds)
-      let sMin = 1, sMax = 200; // default if nothing provided
-      if (window.currentLevelSizeBounds && Number.isFinite(window.currentLevelSizeBounds.min) && Number.isFinite(window.currentLevelSizeBounds.max)) {
-        sMin = window.currentLevelSizeBounds.min;
-        sMax = window.currentLevelSizeBounds.max;
-      }
-      const sClamped = Math.max(sMin, Math.min(sMax, playerSize));
-      const sProgress = (sClamped - sMin) / Math.max(1e-9, (sMax - sMin)); // 0..1
-      this.scaleFill.style.width = (sProgress * 100).toFixed(1) + '%';
+  // scalePanel-updated.js
+// Añadidos: soporte para parsec (pc) y megaparsec (Mpc) cuando la escala es suficientemente grande.
+// Reemplaza las funciones del panel de escala existentes por estas (métodos de la misma clase/objeto).
 
-      // 2) Label: still unit-aware (Å / nm / µm / mm / cm / m / km / Mm)
-      const sizeToNm = window.overrideSizeToNanometers || ((size) => this.sizeToNanometers(size));
-      const nm = sizeToNm(playerSize);
-      this.scaleCurrent.textContent = 'Current: ' + this._formatByBestUnit(nm);
-    } catch (err) {
-      console.error('❌ Error updating scale panel:', err);
+
+// ------------------ Métodos actualizados ------------------
+updateScalePanel(playerSize) {
+  const NM_PER_M = 1e9; // 1 m = 1e9 nm
+  const NM_PER_KM = 1e12; // 1 km = 1e12 nm
+  const NM_PER_Mm = 1e15; // 1 Mm (megametro) = 1e15 nm
+  const NM_PER_PC = 3.085677581e25; // 1 parsec en nm
+  const NM_PER_MPC = NM_PER_PC * 1e6; // 1 megaparsec en nm
+  
+  try {
+    // 1) Progress: strictly normalized to SIZE band (from main.getLevelInfo thresholds)
+    let sMin = 1, sMax = 200; // default if nothing provided
+    if (window.currentLevelSizeBounds && Number.isFinite(window.currentLevelSizeBounds.min) && Number.isFinite(window.currentLevelSizeBounds.max)) {
+      sMin = window.currentLevelSizeBounds.min;
+      sMax = window.currentLevelSizeBounds.max;
     }
+    const sClamped = Math.max(sMin, Math.min(sMax, playerSize));
+    const sProgress = (sClamped - sMin) / Math.max(1e-9, (sMax - sMin)); // 0..1
+    this.scaleFill.style.width = (sProgress * 100).toFixed(1) + '%';
+
+    // 2) Label: ahora soporta unidades astronómicas (pc / Mpc) además de Å / nm / µm / mm / cm / m / km / Mm
+    const sizeToNm = window.overrideSizeToNanometers || ((size) => this.sizeToNanometers(size));
+    const nm = sizeToNm(playerSize);
+    this.scaleCurrent.textContent = 'Current: ' + this._formatByBestUnit(nm);
+  } catch (err) {
+    console.error('❌ Error updating scale panel:', err);
+  }
+}
+
+
+/**
+ * Called by the level system (levels_pack.js) on enter/change.
+ * rule: { name?: string, nmMin: number, nmMax: number, accent?: CSS }
+ */
+setScaleRule(rule = {}) {
+  this._activeScaleRule = rule && typeof rule === 'object' ? rule : null;
+
+  const title = document.getElementById('scaleTitle');
+  if (title) title.textContent = 'SCALE · ' + (rule?.name || '—');
+
+  const labels = document.getElementById('scaleLabels');
+  if (labels && Number.isFinite(rule.nmMin) && Number.isFinite(rule.nmMax)) {
+    labels.innerHTML = '';
+    const left  = document.createElement('span'); left.textContent  = this._formatEdge(rule.nmMin);
+    const mid   = document.createElement('span'); mid.textContent   = this._unitOnly(Math.sqrt(rule.nmMin * rule.nmMax));
+    const right = document.createElement('span'); right.textContent = this._formatEdge(rule.nmMax);
+    labels.appendChild(left); labels.appendChild(mid); labels.appendChild(right);
   }
 
+  const fill = document.getElementById('scaleFill');
+  if (fill) fill.style.background = rule?.accent || '';
+}
 
-  /**
-   * Called by the level system (levels_pack.js) on enter/change.
-   * rule: { name?: string, nmMin: number, nmMax: number, accent?: CSS }
-   */
-  setScaleRule(rule = {}) {
-    this._activeScaleRule = rule && typeof rule === 'object' ? rule : null;
+// ------------------ Helpers añadidos / actualizados ------------------
 
-    const title = document.getElementById('scaleTitle');
-    if (title) title.textContent = 'SCALE · ' + (rule?.name || '—');
+// Formatea un valor dado en nanómetros a la "mejor" unidad legible.
+// Devuelve una cadena como "12.3 km" o "4.56 pc" o "0.123 Mpc"
+_formatByBestUnit(nm) {
+  if (!Number.isFinite(nm)) return '—';
+  // unidades desde la más pequeña a la más grande (otras unidades previas presumidas en el proyecto)
+  // Nota: mantenemos compatibilidad con Å, nm, µm, mm, cm, m, km, Mm y añadimos pc / Mpc
 
-    const labels = document.getElementById('scaleLabels');
-    if (labels && Number.isFinite(rule.nmMin) && Number.isFinite(rule.nmMax)) {
-      labels.innerHTML = '';
-      const left  = document.createElement('span'); left.textContent  = this._formatEdge(rule.nmMin);
-      const mid   = document.createElement('span'); mid.textContent   = this._unitOnly(Math.sqrt(rule.nmMin * rule.nmMax));
-      const right = document.createElement('span'); right.textContent = this._formatEdge(rule.nmMax);
-      labels.appendChild(left); labels.appendChild(mid); labels.appendChild(right);
-    }
-
-    const fill = document.getElementById('scaleFill');
-    if (fill) fill.style.background = rule?.accent || '';
+  // Ångström
+  const NM_PER_ANG = 0.1; // 1 Å = 0.1 nm
+  if (nm < 1e-3) {
+    // muy pequeño, mostramos en Å
+    const val = nm / NM_PER_ANG;
+    return this._fmt(val) + ' Å';
   }
+  if (nm < 1) {
+    return this._fmt(nm) + ' nm';
+  }
+  if (nm < 1e3) {
+    // µm -> 1 µm = 1e3 nm
+    return this._fmt(nm / 1e3) + ' µm';
+  }
+  if (nm < 1e6) {
+    // mm -> 1 mm = 1e6 nm
+    return this._fmt(nm / 1e6) + ' mm';
+  }
+  if (nm < 1e7) {
+    // cm -> 1 cm = 1e7 nm
+    return this._fmt(nm / 1e7) + ' cm';
+  }
+  if (nm < NM_PER_M) {
+    // m (>= 1e9 nm) actually NM_PER_M = 1e9, so values between 1e7 and 1e9 will fall here
+    return this._fmt(nm / NM_PER_M) + ' m';
+  }
+  if (nm < NM_PER_KM) {
+    // km
+    return this._fmt(nm / NM_PER_KM) + ' km';
+  }
+  if (nm < NM_PER_Mm) {
+    // Mm (megametro)
+    return this._fmt(nm / NM_PER_Mm) + ' Mm';
+  }
+
+  // A partir de aquí son escalas astronómicas: parsec / megaparsec
+  if (nm < NM_PER_PC) {
+    // si es mayor que Mm pero menor que parsec, lo expresamos en Mm (esta rama solo llega si NM_PER_Mm <= nm < NM_PER_PC)
+    return this._fmt(nm / NM_PER_Mm) + ' Mm';
+  }
+
+  if (nm < NM_PER_MPC) {
+    // parsec
+    return this._fmt(nm / NM_PER_PC) + ' pc';
+  }
+
+  // megaparsec y más grandes
+  return this._fmt(nm / NM_PER_MPC) + ' Mpc';
+}
+
+// Formatea el texto de los extremos (edge) de la regla. Mantiene consistencia con _formatByBestUnit
+_formatEdge(nm) {
+  const formatted = this._formatByBestUnit(nm);
+  // si el proyecto quiere un formato más corto o con unidad sola, se puede ajustar aquí.
+  return formatted;
+}
+
+// Retorna solamente la unidad correspondiente al valor dado en nm (ej: "km", "pc", "Mpc")
+_unitOnly(nm) {
+  if (!Number.isFinite(nm)) return '—';
+  if (nm < 1e-3) return 'Å';
+  if (nm < 1) return 'nm';
+  if (nm < 1e3) return 'µm';
+  if (nm < 1e6) return 'mm';
+  if (nm < 1e7) return 'cm';
+  if (nm < NM_PER_M) return 'm';
+  if (nm < NM_PER_KM) return 'km';
+  if (nm < NM_PER_Mm) return 'Mm';
+  if (nm < NM_PER_PC) return 'Mm';
+  if (nm < NM_PER_MPC) return 'pc';
+  return 'Mpc';
+}
+
+// Pequeña utilidad para formatear números con precisión dinámica
+_fmt(value) {
+  if (!Number.isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  if (abs === 0) return '0';
+  if (abs < 1) return value.toPrecision(3).replace(/(?:\.0+|0+)$/,'');
+  if (abs < 10) return value.toFixed(3).replace(/(?:\.0+|0+)$/,'');
+  if (abs < 100) return value.toFixed(2).replace(/(?:\.0+|0+)$/,'');
+  if (abs < 1000) return value.toFixed(1).replace(/(?:\.0+|0+)$/,'');
+  // valores muy grandes: notación exponencial corta para evitar cadenas gigantes
+  if (abs >= 1e9) return value.toExponential(3);
+  return Math.round(value).toString();
+}
+
+// Nota: este archivo asume que existe "this.sizeToNanometers(size)" en la clase original.
+// Si deseas que incluya una versión por si no existe, puedo añadir una función fallback.
 
   /* -------------------- Unit helpers (in nm) -------------------- */
 
