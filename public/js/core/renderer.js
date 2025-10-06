@@ -619,39 +619,39 @@ class GameRenderer {
     
     // Bots tienen texturas diferentes
     if (player.isBot) {
-      if (size < 27) return 'sol2';       // Nivel 1 Subnivel 1-2
-      if (size < 40) return 'planeta_anillo';  // Nivel 1 Subnivel 3
-      if (size < 120) return 'sol3';      // Nivel 1 Subnivel 4
-      if (size < 160) return 'andromeda'; // Nivel 2
+      if (size < 200) return 'sol2';       // Nivel 1 Subnivel 1-2
+      if (size < 400) return 'planeta_anillo';  // Nivel 1 Subnivel 3
+      if (size < 600) return 'sol3';      // Nivel 1 Subnivel 4
+      if (size < 800) return 'andromeda'; // Nivel 2
       return 'exotic_galaxy';             // Nivel 3
     }
     
     // Jugadores humanos
-    if (size >= 2 && size < 14) {
+    if (size >= 2 && size < 199) {
       return 'nebula';  // Nivel 1 Subnivel 1: Átomos
-    } else if (size >= 14 && size < 27) {
+    } else if (size >= 200 && size < 399) {
       return 'nebula';  // Nivel 1 Subnivel 2: Granos de polvo
-    } else if (size >= 27 && size < 40) {
+    } else if (size >= 400 && size < 460) {
       return 'roca';    // Nivel 1 Subnivel 3: Asteroides
-    } else if (size >= 40 && size < 60) {
+    } else if (size >= 460 && size < 520) {
       return 'LaTierra'; // Nivel 1 Subnivel 4: Planeta pequeño
-    } else if (size >= 60 && size < 120) {
+    } else if (size >= 520 && size < 600) {
       return 'sol';     // Nivel 1 Final: Estrella
-    } else if (size >= 120 && size < 125) {
+    } else if (size >= 600 && size < 630) {
       return 'via_lactea'; // Nivel 2 Inicio
-    } else if (size >= 125 && size < 135) {
+    } else if (size >= 630 && size < 660) {
       return 'galaxia_01'; // Nivel 2 Sub 1
-    } else if (size >= 135 && size < 145) {
+    } else if (size >= 660 && size < 690) {
       return 'galaxia_02'; // Nivel 2 Sub 2
-    } else if (size >= 145 && size < 155) {
+    } else if (size >= 690 && size < 720) {
       return 'galaxia_03'; // Nivel 2 Sub 3
-    } else if (size >= 155 && size < 165) {
+    } else if (size >= 720 && size < 750) {
       return 'galaxia_04'; // Nivel 2/3 Sub 4
-    } else if (size >= 165 && size < 175) {
+    } else if (size >= 750 && size < 775) {
       return 'galaxia_05'; // Nivel 3 Sub 5
-    } else if (size >= 175 && size < 185) {
+    } else if (size >= 775 && size < 1000) {
       return 'galaxia_06'; // Nivel 3 Sub 6
-    } else if (size >= 185) {
+    } else if (size >= 1000) {
       return 'galaxia_agujero'; // Skin FINAL del juego (185+)
     }
   }

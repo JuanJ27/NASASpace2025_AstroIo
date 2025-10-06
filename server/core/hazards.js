@@ -74,7 +74,7 @@ function _spawnAsteroidFromCorner() {
   const len = Math.hypot(dx, dy) || 1;
   dx /= len; dy /= len;
 
-  const speed = rand(7.5, 11.5); // fast
+  const speed = rand(2.5, 7.5)//rand(7.5, 11.5); // fast
   const r = rand(10, 16);
 
   HZ.asteroids.push({

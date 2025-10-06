@@ -711,12 +711,12 @@ class AstroIoGame {
   // Exact size bands that match getLevelInfo() thresholds
   getBoundsForLevel(level) {
     switch (level) {
-      case 0: return { min: 2,   max: 13  }; // Nivel 1 Subnivel 1: Átomos
-      case 1: return { min: 14,  max: 26  }; // Nivel 1 Subnivel 2: Granos
-      case 2: return { min: 27,  max: 39  }; // Nivel 1 Subnivel 3: Asteroides
-      case 3: return { min: 40,  max: 119 }; // Nivel 1 Subnivel 4: Sistema Solar
-      case 4: return { min: 120, max: 159 }; // Nivel 2: Galaxias
-      case 5: return { min: 160, max: 200 }; // Nivel 3: Supercúmulo
+      case 0: return { min: 2,   max: 199  }; // Nivel 1 Subnivel 1: Átomos
+      case 1: return { min: 200,  max: 399  }; // Nivel 1 Subnivel 2: Granos
+      case 2: return { min: 400,  max: 499  }; // Nivel 1 Subnivel 3: Asteroides
+      case 3: return { min: 500,  max: 599 }; // Nivel 1 Subnivel 4: Sistema Solar
+      case 4: return { min: 600, max: 799 }; // Nivel 2: Galaxias
+      case 5: return { min: 800, max: 1000 }; // Nivel 3: Supercúmulo
       default: return { min: 1,  max: 200 };
     }
   }
@@ -797,7 +797,7 @@ class AstroIoGame {
 
   getLevelInfo(size) {
     // Nivel 1 - Subnivel 1: Átomos
-    if (size >= 2 && size < 14) {
+    if (size >= 2 && size < 199) {
       return { 
         level: 0, 
         mainLevel: 1, 
@@ -809,7 +809,7 @@ class AstroIoGame {
       };
     } 
     // Nivel 1 - Subnivel 2: Granos de Polvo
-    else if (size >= 14 && size < 27) {
+    else if (size >= 200 && size < 399) {
       return { 
         level: 1, 
         mainLevel: 1, 
@@ -821,7 +821,7 @@ class AstroIoGame {
       };
     } 
     // Nivel 1 - Subnivel 3: Asteroides
-    else if (size >= 27 && size < 40) {
+    else if (size >= 400 && size < 499) {
       return { 
         level: 2, 
         mainLevel: 1, 
@@ -833,7 +833,7 @@ class AstroIoGame {
       };
     } 
     // Nivel 1 - Subnivel 4: Sistema Solar
-    else if (size >= 40 && size < 120) {
+    else if (size >= 500 && size < 599) {
       return { 
         level: 3, 
         mainLevel: 1, 
@@ -845,7 +845,7 @@ class AstroIoGame {
       };
     } 
     // Nivel 2: Galaxias
-    else if (size >= 120 && size < 160) {
+    else if (size >= 600 && size < 799) {
       return { 
         level: 4, 
         mainLevel: 2, 
@@ -857,7 +857,7 @@ class AstroIoGame {
       };
     } 
     // Nivel 3: Supercúmulo
-    else if (size >= 160 && size <= 200) {
+    else if (size >= 800 && size <= 1000) {
       return { 
         level: 5, 
         mainLevel: 3, 
