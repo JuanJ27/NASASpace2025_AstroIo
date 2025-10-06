@@ -111,15 +111,15 @@ class GameUI {
     }
   }
 
-/**
- * Called by the level system (levels_pack.js) on enter/change.
- * rule: { name?: string, nmMin: number, nmMax: number, accent?: CSS }
- */
-setScaleRule(rule = {}) {
-  this._activeScaleRule = rule && typeof rule === 'object' ? rule : null;
+  /**
+   * Called by the level system (levels_pack.js) on enter/change.
+   * rule: { name?: string, nmMin: number, nmMax: number, accent?: CSS }
+   */
+  setScaleRule(rule = {}) {
+    this._activeScaleRule = rule && typeof rule === 'object' ? rule : null;
 
-  const title = document.getElementById('scaleTitle');
-  if (title) title.textContent = 'SCALE · ' + (rule?.name || '—');
+    const title = document.getElementById('scaleTitle');
+    if (title) title.textContent = 'SCALE · ' + (rule?.name || '—');
 
     const labels = document.getElementById('scaleLabels');
     if (labels && Number.isFinite(rule.nmMin) && Number.isFinite(rule.nmMax)) {
@@ -131,108 +131,9 @@ setScaleRule(rule = {}) {
       labels.appendChild(left); labels.appendChild(mid); labels.appendChild(right);
     }
 
-  const fill = document.getElementById('scaleFill');
-  if (fill) fill.style.background = rule?.accent || '';
-}
-
-// ------------------ Helpers añadidos / actualizados ------------------
-
-// Formatea un valor dado en nanómetros a la "mejor" unidad legible.
-// Devuelve una cadena como "12.3 km" o "4.56 pc" o "0.123 Mpc"
-_formatByBestUnit(nm) {
-  if (!Number.isFinite(nm)) return '—';
-  // unidades desde la más pequeña a la más grande (otras unidades previas presumidas en el proyecto)
-  // Nota: mantenemos compatibilidad con Å, nm, µm, mm, cm, m, km, Mm y añadimos pc / Mpc
-
-  // Ångström
-  const NM_PER_ANG = 0.1; // 1 Å = 0.1 nm
-  if (nm < 1e-3) {
-    // muy pequeño, mostramos en Å
-    const val = nm / NM_PER_ANG;
-    return this._fmt(val) + ' Å';
+    const fill = document.getElementById('scaleFill');
+    if (fill) fill.style.background = rule?.accent || '';
   }
-  if (nm < 1) {
-    return this._fmt(nm) + ' nm';
-  }
-  if (nm < 1e3) {
-    // µm -> 1 µm = 1e3 nm
-    return this._fmt(nm / 1e3) + ' µm';
-  }
-  if (nm < 1e6) {
-    // mm -> 1 mm = 1e6 nm
-    return this._fmt(nm / 1e6) + ' mm';
-  }
-  if (nm < 1e7) {
-    // cm -> 1 cm = 1e7 nm
-    return this._fmt(nm / 1e7) + ' cm';
-  }
-  if (nm < NM_PER_M) {
-    // m (>= 1e9 nm) actually NM_PER_M = 1e9, so values between 1e7 and 1e9 will fall here
-    return this._fmt(nm / NM_PER_M) + ' m';
-  }
-  if (nm < NM_PER_KM) {
-    // km
-    return this._fmt(nm / NM_PER_KM) + ' km';
-  }
-  if (nm < NM_PER_Mm) {
-    // Mm (megametro)
-    return this._fmt(nm / NM_PER_Mm) + ' Mm';
-  }
-
-  // A partir de aquí son escalas astronómicas: parsec / megaparsec
-  if (nm < NM_PER_PC) {
-    // si es mayor que Mm pero menor que parsec, lo expresamos en Mm (esta rama solo llega si NM_PER_Mm <= nm < NM_PER_PC)
-    return this._fmt(nm / NM_PER_Mm) + ' Mm';
-  }
-
-  if (nm < NM_PER_MPC) {
-    // parsec
-    return this._fmt(nm / NM_PER_PC) + ' pc';
-  }
-
-  // megaparsec y más grandes
-  return this._fmt(nm / NM_PER_MPC) + ' Mpc';
-}
-
-// Formatea el texto de los extremos (edge) de la regla. Mantiene consistencia con _formatByBestUnit
-_formatEdge(nm) {
-  const formatted = this._formatByBestUnit(nm);
-  // si el proyecto quiere un formato más corto o con unidad sola, se puede ajustar aquí.
-  return formatted;
-}
-
-// Retorna solamente la unidad correspondiente al valor dado en nm (ej: "km", "pc", "Mpc")
-_unitOnly(nm) {
-  if (!Number.isFinite(nm)) return '—';
-  if (nm < 1e-3) return 'Å';
-  if (nm < 1) return 'nm';
-  if (nm < 1e3) return 'µm';
-  if (nm < 1e6) return 'mm';
-  if (nm < 1e7) return 'cm';
-  if (nm < NM_PER_M) return 'm';
-  if (nm < NM_PER_KM) return 'km';
-  if (nm < NM_PER_Mm) return 'Mm';
-  if (nm < NM_PER_PC) return 'Mm';
-  if (nm < NM_PER_MPC) return 'pc';
-  return 'Mpc';
-}
-
-// Pequeña utilidad para formatear números con precisión dinámica
-_fmt(value) {
-  if (!Number.isFinite(value)) return '—';
-  const abs = Math.abs(value);
-  if (abs === 0) return '0';
-  if (abs < 1) return value.toPrecision(3).replace(/(?:\.0+|0+)$/,'');
-  if (abs < 10) return value.toFixed(3).replace(/(?:\.0+|0+)$/,'');
-  if (abs < 100) return value.toFixed(2).replace(/(?:\.0+|0+)$/,'');
-  if (abs < 1000) return value.toFixed(1).replace(/(?:\.0+|0+)$/,'');
-  // valores muy grandes: notación exponencial corta para evitar cadenas gigantes
-  if (abs >= 1e9) return value.toExponential(3);
-  return Math.round(value).toString();
-}
-
-// Nota: este archivo asume que existe "this.sizeToNanometers(size)" en la clase original.
-// Si deseas que incluya una versión por si no existe, puedo añadir una función fallback.
 
   /* -------------------- Unit helpers (in nm) -------------------- */
 
@@ -399,7 +300,7 @@ class FloatingCardsManager {
     this.cards = [
       {
         "id": 1,
-        "points_threshold": 28,
+        "points_threshold": 50,
         "scale": "5 nm (Nanometers)",
         "title": "Transistor Gate",
         "description": "Tiny transistor gates power smartphones, laptops and appliances — microscopic switches that control electronic signals.",
@@ -408,7 +309,7 @@ class FloatingCardsManager {
       },
       {
         "id": 2,
-        "points_threshold": 46,
+        "points_threshold": 100,
         "scale": "60 nm (Nanometers)",
         "title": "Ultraviolet Wavelength",
         "description": "60 nm ultraviolet is invisible but energetic — it can break molecules; ozone blocks it so only space probes detect it.",
@@ -417,7 +318,7 @@ class FloatingCardsManager {
       },
       {
         "id": 3,
-        "points_threshold": 90,
+        "points_threshold": 150,
         "scale": "100 µm (Micrometers)",
         "title": "Human Hair Width",
         "description": "Human hair varies: straight is cylindrical, curly is flattened to curl. You likely have 50,000-200,000 strands.",
@@ -426,7 +327,7 @@ class FloatingCardsManager {
       },
       {
         "id": 4,
-        "points_threshold": 110,
+        "points_threshold": 300,
         "scale" : "5 mm (millimeters)",
         "title": "Rice Grain & Ant",
         "description": "Ants and rice grains (~4-5 mm) are similar in size. You'd eat ~300M grains in a lifetime; ants outnumber people 1M:1.",
@@ -435,7 +336,7 @@ class FloatingCardsManager {
       },
       {
         "id": 5,
-        "points_threshold": 145,
+        "points_threshold": 450,
         "scale" : "6 m (Meters)",
         "title": "Giraffe Height",
         "description": "Giraffes reach ~6 m tall; their necks are nearly half their height. Predators must topple them to kill them.",
@@ -444,7 +345,7 @@ class FloatingCardsManager {
       },
       {
         "id": 6,
-        "points_threshold": 168,
+        "points_threshold": 500,
         "scale" : "~ 1 Km (Kilometers)",
         "title": "Burj Khalifa",
         "description": "Burj Khalifa is the world's tallest building at 828 m; it even has a swimming pool on the 76th floor.",
@@ -453,7 +354,7 @@ class FloatingCardsManager {
       },
       {
         "id": 7,
-        "points_threshold": 185,
+        "points_threshold": 550,
         "scale" : "~ 24-35 Km (Kilometers)",
         "title": "Neutron Star",
         "description": "Neutron stars are super-dense stellar remnants: more mass than the Sun packed into ~20 km across.",
@@ -462,7 +363,7 @@ class FloatingCardsManager {
       },
         {
         "id": 8,
-        "points_threshold": 209,
+        "points_threshold": 622,
         "title": "Io - Jupiter's Volcanic Moon",
         "scale": "~3.6 Mm (Megameters)",
         "description": "Jupiter's pizza-looking moon with over 400 active volcanoes! The most volcanically active place in the solar system.",
@@ -471,7 +372,7 @@ class FloatingCardsManager {
       },
       {
         "id": 9,
-        "points_threshold": 248,
+        "points_threshold": 644,
         "title": "The Sun - Our Stellar Furnace",
         "scale": "~696 Mm (Megameters)",
         "description": "A giant ball of plasma converting 600 million tons of hydrogen into helium every second. You could fit 1.3 million Earths inside!",
@@ -480,7 +381,7 @@ class FloatingCardsManager {
       },
       {
         "id": 10,
-        "points_threshold": 269,
+        "points_threshold": 667,
         "title": "All Humans Stacked Up",
         "scale": "~13.2 Gm (Gigameters)",
         "description": "If all 8 billion people stood on each other's shoulders, we'd reach 88 times the distance from Earth to the Moon!",
@@ -489,7 +390,7 @@ class FloatingCardsManager {
       },
       {
         "id": 11,
-        "points_threshold": 294,
+        "points_threshold": 689,
         "title": "R Doradus - The Giant Red Star",
         "scale": "~2.74 AU (Astronomical Units)",
         "description": "A red giant so huge it would swallow Mercury, Venus, Earth, Mars, and part of the asteroid belt if it replaced our Sun!",
@@ -498,7 +399,7 @@ class FloatingCardsManager {
       },
       {
         "id": 12,
-        "points_threshold": 325,
+        "points_threshold": 711,
         "title": "Light's Daily Commute",
         "scale": "~173.8 AU (Astronomical Units)",
         "description": "Light travels 26 billion km in one day—that's 173.8 times Earth-Sun distance. At highway speed, it'd take 30,000 years!",
@@ -507,7 +408,7 @@ class FloatingCardsManager {
       },
       {
         "id": 13,
-        "points_threshold": 364,
+        "points_threshold": 733,
         "title": "Hourglass Nebula - Cosmic Hourglass",
         "scale": "~36,765 AU (Astronomical Units)",
         "description": "A dying star ejected its outer layers creating this stunning hourglass shape. Time's up for that star, but its glow lives on!",
@@ -516,7 +417,7 @@ class FloatingCardsManager {
       },
       {
         "id": 14,
-        "points_threshold": 391,
+        "points_threshold": 756,
         "title": "Orion Nebula - Stellar Nursery",
         "scale": "~7.45 pc (Parsecs)",
         "description": "The universe's maternity ward where baby stars are born! One of the brightest nebulae visible to the naked eye from Earth.",
@@ -525,7 +426,7 @@ class FloatingCardsManager {
       },
       {
         "id": 15,
-        "points_threshold": 412,
+        "points_threshold": 778,
         "title": "Omega Centauri Globular Cluster",
         "scale": "~46 pc (Parsecs) / ~150 light-years",
         "description": "The biggest and brightest globular cluster in the Milky Way, home to 10 million stars packed into a cosmic ball!",
@@ -534,7 +435,7 @@ class FloatingCardsManager {
       },
       {
         "id": 16,
-        "points_threshold": 490,
+        "points_threshold": 820,
         "title": "Sagittarius Dwarf Galaxy",
         "scale": "~3 kpc (Kiloparsecs) / ~10,000 light-years",
         "description": "A small galaxy being slowly eaten by the Milky Way! It's passing through our galactic disk right now.",
@@ -543,7 +444,7 @@ class FloatingCardsManager {
       },
       {
         "id": 17,
-        "points_threshold": 513,
+        "points_threshold": 840,
         "title": "Large Magellanic Cloud (LMC)",
         "scale": "~9.86 kpc (Kiloparsecs) / ~32,200 light-years",
         "description": "Our galaxy's satellite neighbor with 20 billion stars! Visible to the naked eye from the Southern Hemisphere.",
@@ -552,7 +453,7 @@ class FloatingCardsManager {
       },
       {
         "id": 18,
-        "points_threshold": 534,
+        "points_threshold": 860,
         "title": "The Milky Way Galaxy",
         "scale": "~30 kpc (Kiloparsecs) / ~100,000 light-years",
         "description": "Our home galaxy! A massive spiral with 200-400 billion stars, including our Sun. We live in one of its spiral arms.",
@@ -561,7 +462,7 @@ class FloatingCardsManager {
       },
       {
         "id": 19,
-        "points_threshold": 549,
+        "points_threshold": 880,
         "title": "Andromeda Galaxy (M31)",
         "scale": "~67.45 kpc (Kiloparsecs) / ~220,000 light-years",
         "description": "The largest galaxy in our Local Group with over 1 trillion stars! It's on a collision course with the Milky Way.",
@@ -570,7 +471,7 @@ class FloatingCardsManager {
       },
       {
         "id": 20,
-        "points_threshold": 595,
+        "points_threshold": 900,
         "title": "Distance to Andromeda",
         "scale": "~778 kpc (Kiloparsecs) / ~2.54 million light-years",
         "description": "The gap between us and Andromeda! Light takes 2.5 million years to travel this distance. That's the nearest major galaxy!",
@@ -579,7 +480,7 @@ class FloatingCardsManager {
       },
       {
         "id": 21,
-        "points_threshold": 620,
+        "points_threshold": 920,
         "title": "Virgo Cluster",
         "scale": "~16.5 Mpc (Megaparsecs) / ~54 million light-years",
         "description": "The nearest large galaxy cluster with over 2,000 galaxies! The heart of our Local Supercluster.",
@@ -588,7 +489,7 @@ class FloatingCardsManager {
       },
       {
         "id": 22,
-        "points_threshold": 658,
+        "points_threshold": 940,
         "title": "Coma Cluster",
         "scale": "~100 Mpc (Megaparsecs) / ~336 million light-years",
         "description": "A massive cluster with over 1,000 galaxies! One of the first places where dark matter was detected.",
@@ -597,7 +498,7 @@ class FloatingCardsManager {
       },
       {
         "id": 23,
-        "points_threshold": 705,
+        "points_threshold": 960,
         "title": "Shapley Supercluster",
         "scale": "~250 Mpc (Megaparsecs) / ~650 million light-years",
         "description": "The biggest concentration of galaxies in our cosmic neighborhood! Contains thousands of galaxies and 25 clusters.",
@@ -606,7 +507,7 @@ class FloatingCardsManager {
       },
       {
         "id": 24,
-        "points_threshold": 720,
+        "points_threshold": 980,
         "title": "Large-Scale Structure",
         "scale": "~1 Gpc (Gigaparsec) / ~3.26 billion light-years",
         "description": "At this scale, galaxies form cosmic webs! Long filaments and giant voids create the universe's foam-like structure.",
