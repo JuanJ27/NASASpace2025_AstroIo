@@ -23,7 +23,8 @@ class AstroIoGame {
     this.clientGameState = {
       players: {},
       orbs: new Map(),
-      hazards: { blackHole: null, whiteHole: null, asteroids: [] }  // NEW
+      hazards: { blackHole: null, whiteHole: null, asteroids: [] },
+      galaxyHazards: { active: false } // ← NEW
     };
 
     this.lastLevelTier = -1;
@@ -583,6 +584,10 @@ class AstroIoGame {
         }
 
         this.clientGameState.hazards = hz;
+      }
+
+      if (delta.galaxyHazards) {
+        this.clientGameState.galaxyHazards = delta.galaxyHazards; // ← NEW
       }
 
       this.render();

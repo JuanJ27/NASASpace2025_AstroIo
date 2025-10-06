@@ -6,6 +6,19 @@
  */
 
 const { GAME_CONFIG, gameState } = require('./gameState');
+const { LEVELS_CONFIG } = require('../../shared/levelsConfig');
+
+function getBand(filter) {
+  const row = LEVELS_CONFIG.find(e =>
+    Object.entries(filter).every(([k, v]) => e[k] === v)
+  );
+  return row ? { min: row.min, max: row.max } : null;
+}
+
+const GALAXY_HAZARD_RANGE =
+  getBand({ level: 2, sublevel: 1 }) ||
+  getBand({ clientLevel: 4 }) ||
+  { min: 120, max: 159 };
 
 // Estado de hazards para nivel galaxias
 let galaxyHazardsActive = false;
@@ -236,6 +249,12 @@ function updateGalaxyHazards(dt, io) {
   
   players.forEach(player => {
     if (!player.isAlive) return;
+
+    const inGalBand =
+      player.size >= GALAXY_HAZARD_RANGE.min &&
+      player.size <= GALAXY_HAZARD_RANGE.max;
+
+    if (!inGalBand) return; // ← prevents “hidden” galaxy BH from touching others
     
     // 1. Agujero Negro Supermasivo (atracción gravitacional + movimiento)
     if (bh) {
