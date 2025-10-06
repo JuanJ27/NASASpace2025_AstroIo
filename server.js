@@ -14,7 +14,6 @@ const { updatePlayerPosition } = require('./server/core/physics');
 const { checkOrbCollisions, checkPlayerCollisions } = require('./server/core/collisions');
 const { initializeBots, updateBots } = require('./server/core/bots');
 const { getPlayerLevel } = require('./server/core/player');
-const { updateGravitationalEvent } = require('./server/core/gravitationalEvent'); // ⭐ NUEVO: IMPORTAR
 
 // Hazards (server authoritative) — LAZY activation only
 const {
@@ -27,6 +26,21 @@ const {
 
 // Pull hazard band from shared/levelsConfig
 const { getLevelForSize } = require('./shared/levelsConfig');
+
+const { LEVELS_CONFIG } = require('./shared/levelsConfig');
+
+function getBand(filter) {
+  const row = LEVELS_CONFIG.find(e =>
+    Object.entries(filter).every(([k, v]) => e[k] === v)
+  );
+  return row ? { min: row.min, max: row.max } : null;
+}
+
+function getUnionBand(filters) {
+  const rows = filters.map(f => getBand(f)).filter(Boolean);
+  if (!rows.length) return null;
+  return { min: Math.min(...rows.map(r => r.min)), max: Math.max(...rows.map(r => r.max)) };
+}
 
 function getHazardBandFromConfig() {
   const cfg = require('./shared/levelsConfig').LEVELS_CONFIG || [];
@@ -43,6 +57,10 @@ function getHazardBandFromConfig() {
 
 const HAZARD_RANGE = getHazardBandFromConfig();
 
+const GALAXY_HAZARD_RANGE =
+  getBand({ level: 2, sublevel: 1 }) ||
+  getBand({ clientLevel: 4 }) ||
+  { min: 120, max: 159 }; // last-resort fallback
 
 // (optional) shared band check if you prefer to lazy-init when someone hits L3
 // const { getLevelForSize } = require('./shared/levelsConfig');
@@ -139,70 +157,35 @@ function gameLoop() {
       fpsUpdateTime = start;
     }
 
-    // ⭐ NUEVO: Actualizar evento gravitacional PRIMERO (antes de todo lo demás)
-    updateGravitationalEvent(dt / 1000); // Convertir ms a segundos
+    // Update human players
+    Object.values(gameState.players).forEach((player) => {
+      if (player.isBot) return;
 
-    // ⭐ MODIFICADO: Solo actualizar física normal si NO hay evento gravitacional activo
-    let removedPlayers = [];
-    
-    if (!gameState.gravitationalEvent || !gameState.gravitationalEvent.active) {
-      // Actualizar jugadores humanos (física normal)
-      Object.values(gameState.players).forEach(player => {
-          if (player.isStaticBot) {
-            return;
-          }
+      updatePlayerPosition(player, dt);
+      checkOrbCollisions(player);
 
-          if (!player.isAlive) {
-            return;
-          }
+      // Keep level meta in sync
+      const level = getPlayerLevel(player.size);
+      player.levelKey = level.key;
+      player.levelName = level.name;
+    });
 
-          // ⭐⭐⭐ NUEVO: No actualizar física de jugadores congelados ⭐⭐⭐
-          if (player._frozenByGravity) {
-            // Solo actualizar nivel, sin movimiento
-            const level = getPlayerLevel(player.size);
-            player.levelKey = level.key;
-            player.levelName = level.name;
-            return;
-          }
-          // ⭐⭐⭐ FIN DEL CÓDIGO NUEVO ⭐⭐⭐
+    // Update bots
+    updateBots(dt);
 
-        updatePlayerPosition(player, dt);
-        checkOrbCollisions(player);
-
-        // Actualizar nivel
-        const level = getPlayerLevel(player.size);
-        player.levelKey = level.key;
-        player.levelName = level.name;
-      });
-
-      // Actualizar bots (física normal)
-      updateBots(dt);
-
-      // Colisiones jugador vs jugador (solo si no hay evento)
-      removedPlayers = checkPlayerCollisions(io);
-    } else {
-      // ⭐ NUEVO: Durante evento gravitacional, solo actualizar niveles (sin física)
-      Object.values(gameState.players).forEach(player => {
-        if (player.isBot) return;
-        
-        // Solo actualizar nivel (sin física ni movimiento)
-        const level = getPlayerLevel(player.size);
-        player.levelKey = level.key;
-        player.levelName = level.name;
-      });
-      // No hay colisiones ni bots durante el evento
-    }
+    // Player vs Player collisions
+    const removedPlayers = checkPlayerCollisions(io);
 
     // ── LAZY hazards activation:
     // Activate ONLY when any player is inside your L1-Sub3 (27–39) or L1-Sub4 (40–119).
-    let anyInHazardBands = false;
-    for (const p of Object.values(gameState.players)) {
-      if (!p || !p.isAlive) continue;
-      if (p.size >= HAZARD_RANGE.min && p.size <= HAZARD_RANGE.max) {
-        anyInHazardBands = true;
-        break;
-      }
+  let anyInHazardBands = false;
+  for (const p of Object.values(gameState.players)) {
+    if (!p || !p.isAlive) continue;
+    if (p.size >= HAZARD_RANGE.min && p.size <= HAZARD_RANGE.max) {
+      anyInHazardBands = true;
+      break;
     }
+  }
 
     if (anyInHazardBands && !areHazardsActive()) {
       enableHazardsForLevel3();
@@ -215,13 +198,26 @@ function gameLoop() {
     // Tick hazards (does nothing if inactive)
     updateHazards(dt, io);
 
+    // --- Galaxy hazards (Nivel 2 / sub 1) ---
+    let anyInGalaxyBand = false;
+    for (const p of Object.values(gameState.players)) {
+      if (!p || !p.isAlive) continue;
+      if (p.size >= GALAXY_HAZARD_RANGE.min && p.size <= GALAXY_HAZARD_RANGE.max) {
+        anyInGalaxyBand = true; break;
+      }
+    }
+    if (anyInGalaxyBand && !areGalaxyHazardsActive()) enableGalaxyHazards();
+    else if (!anyInGalaxyBand && areGalaxyHazardsActive()) disableGalaxyHazards();
+    updateGalaxyHazards(dt, io);
+
     // Build delta
     const delta = {
       players: {},
       orbs: [],
       removedOrbs: [],
       removedPlayers: [],
-      hazards: getHazardsSnapshot() // { blackHole, whiteHole, asteroids }
+      hazards: getHazardsSnapshot(), // { blackHole, whiteHole, asteroids }
+      galaxyHazards: getGalaxyHazardsSnapshot() // galaxy hazards
     };
 
     // Changed/new players
