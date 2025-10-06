@@ -658,7 +658,7 @@ class AstroIoGame {
 
       // ⭐ AGREGAR ESTE BLOQUE COMPLETO AQUÍ: lo puso darwin
       // ========== Detectar cuando llega a tamaño 200 (Supercúmulo) ==========
-      if (myPlayer.size >= 200 && !this._supercumuloBotsRequested) {
+      if (myPlayer.size >= 900 && !this._supercumuloBotsRequested) {
         console.log('🌌 Reached size 200! Requesting Supercumulo bots...');
         this._supercumuloBotsRequested = true;
         
@@ -980,15 +980,15 @@ class AstroIoGame {
       this.runZoomTransition(transitionColor);
       this._toggleQuantumByLevel(currentLevel);
     }
-      // Si llegamos al final del juego (size > 202), mostrar pantalla final
+      // Si llegamos al final del juego (size > 902), mostrar pantalla final
   // ⭐⭐⭐ MOVER ESTE BLOQUE AQUÍ (FUERA DEL IF) ⭐⭐⭐
-  // Si llegamos al final del juego (size >= 202), mostrar pantalla final
+  // Si llegamos al final del juego (size >= 902), mostrar pantalla final
   // IMPORTANTE: Esto debe ejecutarse AUNQUE NO HAYA CAMBIO DE NIVEL
-  if (size >= 202 && this.renderer && this.renderer.showFinalScreen) {
+  if (size >= 902 && this.renderer && this.renderer.showFinalScreen) {
     // Flag para ejecutar solo una vez
     if (!this._finalScreenShown) {
       this._finalScreenShown = true;
-      console.log('🌌 Size reached 202! Showing final screen...');
+      console.log('🌌 Size reached 902! Showing final screen...');
       setTimeout(() => {
         this.renderer.showFinalScreen();
       }, 3000); // Esperar 3 segundos antes de mostrar la pantalla final
