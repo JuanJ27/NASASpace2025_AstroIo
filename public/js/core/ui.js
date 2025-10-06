@@ -89,39 +89,27 @@ class GameUI {
    * - Bar progress uses current level SIZE bounds
    * - Value uses per-level size→nm mapping & formatter
    */
-  // scalePanel-updated.js
-// Añadidos: soporte para parsec (pc) y megaparsec (Mpc) cuando la escala es suficientemente grande.
-// Reemplaza las funciones del panel de escala existentes por estas (métodos de la misma clase/objeto).
+  // --- Keep this good logic exactly as-is ---
+  updateScalePanel(playerSize) {
+    try {
+      // 1) Progress: strictly normalized to SIZE band (from main.getLevelInfo thresholds)
+      let sMin = 1, sMax = 200; // default if nothing provided
+      if (window.currentLevelSizeBounds && Number.isFinite(window.currentLevelSizeBounds.min) && Number.isFinite(window.currentLevelSizeBounds.max)) {
+        sMin = window.currentLevelSizeBounds.min;
+        sMax = window.currentLevelSizeBounds.max;
+      }
+      const sClamped = Math.max(sMin, Math.min(sMax, playerSize));
+      const sProgress = (sClamped - sMin) / Math.max(1e-9, (sMax - sMin)); // 0..1
+      this.scaleFill.style.width = (sProgress * 100).toFixed(1) + '%';
 
-
-// ------------------ Métodos actualizados ------------------
-updateScalePanel(playerSize) {
-  const NM_PER_M = 1e9; // 1 m = 1e9 nm
-  const NM_PER_KM = 1e12; // 1 km = 1e12 nm
-  const NM_PER_Mm = 1e15; // 1 Mm (megametro) = 1e15 nm
-  const NM_PER_PC = 3.085677581e25; // 1 parsec en nm
-  const NM_PER_MPC = NM_PER_PC * 1e6; // 1 megaparsec en nm
-  
-  try {
-    // 1) Progress: strictly normalized to SIZE band (from main.getLevelInfo thresholds)
-    let sMin = 1, sMax = 200; // default if nothing provided
-    if (window.currentLevelSizeBounds && Number.isFinite(window.currentLevelSizeBounds.min) && Number.isFinite(window.currentLevelSizeBounds.max)) {
-      sMin = window.currentLevelSizeBounds.min;
-      sMax = window.currentLevelSizeBounds.max;
+      // 2) Label: still unit-aware (Å / nm / µm / mm / cm / m / km / Mm / Kpc / Mpc)
+      const sizeToNm = window.overrideSizeToNanometers || ((size) => this.sizeToNanometers(size));
+      const nm = sizeToNm(playerSize);
+      this.scaleCurrent.textContent = 'Current: ' + this._formatByBestUnit(nm);
+    } catch (err) {
+      console.error('❌ Error updating scale panel:', err);
     }
-    const sClamped = Math.max(sMin, Math.min(sMax, playerSize));
-    const sProgress = (sClamped - sMin) / Math.max(1e-9, (sMax - sMin)); // 0..1
-    this.scaleFill.style.width = (sProgress * 100).toFixed(1) + '%';
-
-    // 2) Label: ahora soporta unidades astronómicas (pc / Mpc) además de Å / nm / µm / mm / cm / m / km / Mm
-    const sizeToNm = window.overrideSizeToNanometers || ((size) => this.sizeToNanometers(size));
-    const nm = sizeToNm(playerSize);
-    this.scaleCurrent.textContent = 'Current: ' + this._formatByBestUnit(nm);
-  } catch (err) {
-    console.error('❌ Error updating scale panel:', err);
   }
-}
-
 
 /**
  * Called by the level system (levels_pack.js) on enter/change.
@@ -133,14 +121,15 @@ setScaleRule(rule = {}) {
   const title = document.getElementById('scaleTitle');
   if (title) title.textContent = 'SCALE · ' + (rule?.name || '—');
 
-  const labels = document.getElementById('scaleLabels');
-  if (labels && Number.isFinite(rule.nmMin) && Number.isFinite(rule.nmMax)) {
-    labels.innerHTML = '';
-    const left  = document.createElement('span'); left.textContent  = this._formatEdge(rule.nmMin);
-    const mid   = document.createElement('span'); mid.textContent   = this._unitOnly(Math.sqrt(rule.nmMin * rule.nmMax));
-    const right = document.createElement('span'); right.textContent = this._formatEdge(rule.nmMax);
-    labels.appendChild(left); labels.appendChild(mid); labels.appendChild(right);
-  }
+    const labels = document.getElementById('scaleLabels');
+    if (labels && Number.isFinite(rule.nmMin) && Number.isFinite(rule.nmMax)) {
+      labels.innerHTML = '';
+      const left  = document.createElement('span'); left.textContent  = this._formatEdge(rule.nmMin);
+      const midNm = Math.sqrt(rule.nmMin * rule.nmMax);
+      const mid   = document.createElement('span'); mid.textContent   = this._unitOnly(midNm);
+      const right = document.createElement('span'); right.textContent = this._formatEdge(rule.nmMax);
+      labels.appendChild(left); labels.appendChild(mid); labels.appendChild(right);
+    }
 
   const fill = document.getElementById('scaleFill');
   if (fill) fill.style.background = rule?.accent || '';
@@ -247,53 +236,83 @@ _fmt(value) {
 
   /* -------------------- Unit helpers (in nm) -------------------- */
 
-  // Force “edge” values like 0.1/1/1e3/1e9/1e15 to appear as "1 Å / 1 nm / 1 µm / 1 m / 1 Mm"
+  // Exact constants for parsecs (in meters)
+  static get PC_M()  { return 3.085677581e16; }
+  static get KPC_M() { return 3.085677581e19; } // 1e3 pc
+  static get MPC_M() { return 3.085677581e22; } // 1e6 pc
+
+  // Force key “edge” values to nice labels. (All values are in nm here.)
   _formatEdge(nm) {
+    const nmPerM = 1e9;
     const edges = [
-      { v: 0.1,  label: '1 Å'  },
-      { v: 1,    label: '1 nm' },
-      { v: 1e3,  label: '1 µm' },
-      { v: 1e6,  label: '1 mm' },
-      { v: 1e7,  label: '1 cm' },
-      { v: 1e9,  label: '1 m'  },
-      { v: 1e12, label: '1 km' },
-      { v: 1e15, label: '1 Mm' }
+      { v: 0.1,                                 label: '1 Å'  },
+      { v: 1,                                   label: '1 nm' },
+      { v: 1e3,                                 label: '1 µm' },
+      { v: 1e6,                                 label: '1 mm' },
+      { v: 1e7,                                 label: '1 cm' },
+      { v: 1e9,                                 label: '1 m'  },
+      { v: 1e12,                                label: '1 km' },
+      { v: 1e15,                                label: '1 Mm' },
+      // parsec edges (converted to nm)
+      { v: GameUI.KPC_M * nmPerM,               label: '1 Kpc' },
+      { v: GameUI.MPC_M * nmPerM,               label: '1 Mpc' }
     ];
     for (const e of edges) {
       if (Math.abs(nm - e.v) / e.v < 1e-9) return e.label;
     }
-    // fallback: intelligent formatter
     return this._formatByBestUnit(nm);
   }
 
+  // Show ONLY the unit token for a given nm value (for the middle label)
   _unitOnly(nm) {
-    if (nm < 1) return 'Å';
-    if (nm < 1e3) return 'nm';
-    if (nm < 1e6) return 'µm';
-    if (nm < 1e7) return 'mm';
-    if (nm < 1e9) return 'cm';
-    if (nm < 1e12) return 'm';
-    if (nm < 1e15) return 'km';
-    return 'Mm';
+    const m = nm / 1e9;
+    const PC  = GameUI.PC_M;
+    const KPC = GameUI.KPC_M;
+    const MPC = GameUI.MPC_M;
+
+    if (nm < 1)    return 'Å';
+    if (nm < 1e3)  return 'nm';
+    if (nm < 1e6)  return 'µm';
+    if (nm < 1e7)  return 'mm';
+    if (nm < 1e9)  return 'cm';
+    if (m  < 1e3)  return 'm';
+    if (m  < 1e6)  return 'km';
+    if (m  < 1e9)  return 'Mm';
+    // switch to parsecs beyond ~1e9 m
+    if (m  < KPC)  return 'pc';
+    if (m  < MPC)  return 'Kpc';
+    return 'Mpc';
   }
 
   _formatByBestUnit(nm) {
     const round = (v, p = 2) => Math.round(v * Math.pow(10, p)) / Math.pow(10, p);
-
-    if (nm < 0.1) { const A = nm * 10; return `${round(A, 1)} Å`; }        // < 1 Å
-    if (nm < 1)   { const A = nm * 10; return `${round(A, 1)} Å`; }        // 0.1–1 nm shown as Å
-    if (nm < 1e3) return `${round(nm, nm < 10 ? 2 : 1)} nm`;               // nm
-    const um = nm / 1e3;
-    if (um < 1e3) return `${round(um, um < 10 ? 2 : 1)} µm`;               // µm
     const m = nm / 1e9;
-    if (m < 1) {                                                            // < 1 m → mm/cm
+
+    // small: Å / nm / µm
+    if (nm < 0.1) { const A = nm * 10; return `${round(A, 1)} Å`; }
+    if (nm < 1)   { const A = nm * 10; return `${round(A, 1)} Å`; }
+    if (nm < 1e3) return `${round(nm, nm < 10 ? 2 : 1)} nm`;
+
+    // micro/milli/centi
+    const um = nm / 1e3;
+    if (um < 1e3) return `${round(um, um < 10 ? 2 : 1)} µm`;
+    if (m < 1) {
       const mm = m * 1000; if (mm < 10) return `${round(mm, 1)} mm`;
       const cm = m * 100;  if (cm < 10) return `${round(cm, 1)} cm`;
     }
-    if (m < 1e3) return `${round(m, m < 10 ? 2 : 1)} m`;                    // m
-    const km = m / 1e3;
-    if (km < 1e3) return `${round(km, km < 10 ? 2 : 1)} km`;                // km
-    const Mm = km / 1e3; return `${round(Mm, Mm < 10 ? 2 : 1)} Mm`;         // Mm
+
+    // meter / km / Mm
+    if (m < 1e3)  return `${round(m,  m < 10 ? 2 : 1)} m`;
+    const km = m / 1e3;  if (km < 1e3) return `${round(km, km < 10 ? 2 : 1)} km`;
+    const Mm = km / 1e3; if (Mm < 1e3) return `${round(Mm, Mm < 10 ? 2 : 1)} Mm`;
+
+    // parsecs (pc / Kpc / Mpc)
+    const pc  = m / GameUI.PC_M;
+    if (pc < 1e3)   return `${round(pc,  pc < 10 ? 2 : 1)} pc`;
+    const kpc = pc / 1e3;
+    if (kpc < 1e3)  return `${round(kpc, kpc < 10 ? 2 : 1)} Kpc`;
+    const mpc = kpc / 1e3;
+    return `${round(mpc, mpc < 10 ? 2 : 1)} Mpc`;
   }
 
   // Fallback mapping when no level override exists

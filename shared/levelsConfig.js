@@ -10,7 +10,7 @@ const LEVELS_CONFIG = [
   // NIVEL 1 - SUBNIVEL 1: Átomos
   { 
     min: 2,   
-    max: 13,  
+    max: 199,  
     key: 'atomos',          
     name: 'Átomos', 
     clientLevel: 0, 
@@ -20,8 +20,8 @@ const LEVELS_CONFIG = [
   },
   // NIVEL 1 - SUBNIVEL 2: Granos de Polvo
   { 
-    min: 14,  
-    max: 26,  
+    min: 200,  
+    max: 399,  
     key: 'granos',             
     name: 'Granos de Polvo', 
     clientLevel: 1, 
@@ -31,8 +31,8 @@ const LEVELS_CONFIG = [
   },
   // NIVEL 1 - SUBNIVEL 3: Asteroides
   { 
-    min: 27,  
-    max: 39, 
+    min: 400,  
+    max: 499, 
     key: 'asteroides',               
     name: 'Asteroides',       
     clientLevel: 2, 
@@ -42,8 +42,8 @@ const LEVELS_CONFIG = [
   },
   // Transición entre nivel 1 y 2 (sin contenido específico)
   { 
-    min: 40,  
-    max: 119, 
+    min: 500,  
+    max: 599, 
     key: 'transicion-sistema',               
     name: 'Sistema Solar',       
     clientLevel: 3, 
@@ -53,8 +53,8 @@ const LEVELS_CONFIG = [
   },
   // NIVEL 2: Galaxias
   { 
-    min: 120, 
-    max: 159, 
+    min: 600, 
+    max: 799, 
     key: 'galaxias',         
     name: 'Galaxias',       
     clientLevel: 4,
@@ -64,8 +64,8 @@ const LEVELS_CONFIG = [
   },
   // NIVEL 3: Supercúmulo
   { 
-    min: 160, 
-    max: 200, 
+    min: 800, 
+    max: 1000, 
     key: 'supercumulo', 
     name: 'Supercúmulo',   
     clientLevel: 5,

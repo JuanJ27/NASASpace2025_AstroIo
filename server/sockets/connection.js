@@ -105,7 +105,7 @@ function handleConnection(io, socket) {
         center: spawnResult.diamondCenter,
         startTime: Date.now(),
         duration: 5000, // 5 segundos de atracción
-        attractionRadius: 100, // Radio de detención (pixels)
+        attractionRadius: 70, // Radio de detención (pixels)
         attractionSpeed: 150 // Velocidad de atracción (pixels/segundo)
       };
 
