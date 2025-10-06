@@ -79,9 +79,9 @@ function handleConnection(io, socket) {
         return;
       }
 
-      // Verificar que realmente llegó a 165
-      if (player.size < 165) {
-        console.warn(`⚠️ Player ${player.name} tried to spawn bots at size ${player.size} (< 165)`);
+      // Verificar que realmente llegó a 200
+      if (player.size < 200) {
+        console.warn(`⚠️ Player ${player.name} tried to spawn bots at size ${player.size} (< 200)`);
         return;
       }
 

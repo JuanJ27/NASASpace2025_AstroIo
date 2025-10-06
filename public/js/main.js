@@ -439,20 +439,6 @@ class AstroIoGame {
     });
 
     this.socket.setName(this.myPlayerName);
-
-    this.socket.on('whiteHoleUsed', (data) => {
-    // small flash
-    try {
-      if (this.renderer?.transitionOverlay && this.renderer?.app) {
-        const o = this.renderer.transitionOverlay;
-        const w = this.renderer.app.screen.width;
-        const h = this.renderer.app.screen.height;
-        o.clear(); o.beginFill(0x66ccff, 0.25); o.drawRect(0,0,w,h); o.endFill();
-        setTimeout(() => o.clear(), 120);
-      }
-    } catch {}
-  });
-
   }
 
   setupMouseInput() {
@@ -665,9 +651,9 @@ class AstroIoGame {
       this.finalSize = Math.floor(myPlayer.size);
 
       // ⭐ AGREGAR ESTE BLOQUE COMPLETO AQUÍ: lo puso darwin
-      // ========== Detectar cuando llega a tamaño 165 (Supercúmulo) ==========
-      if (myPlayer.size >= 165 && !this._supercumuloBotsRequested) {
-        console.log('🌌 Reached size 165! Requesting Supercumulo bots...');
+      // ========== Detectar cuando llega a tamaño 200 (Supercúmulo) ==========
+      if (myPlayer.size >= 200 && !this._supercumuloBotsRequested) {
+        console.log('🌌 Reached size 200! Requesting Supercumulo bots...');
         this._supercumuloBotsRequested = true;
         
         // Enviar evento al servidor
